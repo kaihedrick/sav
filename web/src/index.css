@@ -56,6 +56,46 @@ body {
   }
 }
 
+/* Outline “draw” for paths that skip 3D tilt (floating) or static reduced-motion grid */
+@keyframes deco-outline-draw-cycle {
+  0%,
+  12% {
+    stroke-dashoffset: 1;
+  }
+  38%,
+  78% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+.deco-no-tilt-pose {
+  transform: rotateX(8deg) rotateY(-14deg);
+  transform-style: preserve-3d;
+}
+
+.deco-path-draw path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: deco-outline-draw-cycle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-duration: var(--deco-draw-dur, 3.2s);
+  animation-delay: var(--deco-draw-delay, 0s);
+  will-change: stroke-dashoffset;
+}
+
+.deco-static-outline-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: deco-outline-draw-cycle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: stroke-dashoffset;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .deco-rise-anim,
   .deco-tilt-anim {
@@ -69,5 +109,10 @@ body {
 
   .deco-tilt-anim {
     transform: rotateX(6deg) rotateY(-8deg);
+  }
+
+  .deco-path-draw path,
+  .deco-static-outline-draw {
+    animation-duration: calc(var(--deco-draw-dur, 3.2s) * 2.2) !important;
   }
 }

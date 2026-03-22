@@ -1,4 +1,5 @@
-import { useId, useMemo } from "react";
+import type { CSSProperties } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useReducedMotion } from "motion/react";
 
 /**
@@ -94,27 +95,130 @@ type FloatingParticle = {
   kind: DecoKind;
   paletteI: number;
   z: number;
+  /** When false, skip 3D wobble and use repeating outline draw instead */
+  useTilt: boolean;
+  drawSec: number;
+  drawDelaySec: number;
 };
 
-const FLOATING_COUNT = 44;
+/** Wide viewports: organic random X. Narrow: low-discrepancy spacing so shapes don’t stack in one column. */
+type HorizontalSpread = "random" | "even";
 
-function buildFloatingParticles(): FloatingParticle[] {
-  return Array.from({ length: FLOATING_COUNT }, (_, i) => {
+function buildFloatingParticles(
+  count: number,
+  spread: HorizontalSpread,
+  compact: boolean,
+): FloatingParticle[] {
+  return Array.from({ length: count }, (_, i) => {
     let sizePx = 44 + rnd(i, 1) * 52;
+    if (compact) sizePx *= 0.82;
     const kind = KIND_CYCLE[i % KIND_CYCLE.length];
     if (kind === "cross") sizePx *= 1.08;
+    const leftPct =
+      spread === "random"
+        ? 3 + rnd(i, 2) * 94
+        : 5 + ((i * 0.6180339887) % 1) * 90 + (rnd(i, 10) - 0.5) * 4;
+    const useTilt = rnd(i, 7) > 0.36;
     return {
       id: i,
-      leftPct: 3 + rnd(i, 2) * 94,
-      riseSec: 15 + rnd(i, 3) * 18,
-      delaySec: -rnd(i, 4) * 28,
+      leftPct,
+      riseSec: 16 + rnd(i, 3) * (compact ? 14 : 18),
+      delaySec: -rnd(i, 4) * (compact ? 40 : 28),
       spinSec: 4.2 + rnd(i, 5) * 6,
       sizePx,
       kind,
       paletteI: i % DECO_PALETTE.length,
       z: 1 + Math.floor(rnd(i, 6) * 18),
+      useTilt,
+      drawSec: 2.6 + rnd(i, 8) * 2.8,
+      drawDelaySec: rnd(i, 9) * 4.2,
     };
   });
+}
+
+type DecorLayout = {
+  floatingCount: number;
+  horizontalSpread: HorizontalSpread;
+  compact: boolean;
+  staticCols: number;
+  staticRows: number;
+};
+
+function layoutForWidth(w: number): DecorLayout {
+  if (w < 400) {
+    return {
+      floatingCount: 10,
+      horizontalSpread: "even",
+      compact: true,
+      staticCols: 4,
+      staticRows: 4,
+    };
+  }
+  if (w < 520) {
+    return {
+      floatingCount: 12,
+      horizontalSpread: "even",
+      compact: true,
+      staticCols: 4,
+      staticRows: 4,
+    };
+  }
+  if (w < 640) {
+    return {
+      floatingCount: 15,
+      horizontalSpread: "even",
+      compact: true,
+      staticCols: 5,
+      staticRows: 4,
+    };
+  }
+  if (w < 768) {
+    return {
+      floatingCount: 18,
+      horizontalSpread: "even",
+      compact: true,
+      staticCols: 5,
+      staticRows: 5,
+    };
+  }
+  if (w < 900) {
+    return {
+      floatingCount: 24,
+      horizontalSpread: "even",
+      compact: false,
+      staticCols: 6,
+      staticRows: 5,
+    };
+  }
+  if (w < 1100) {
+    return {
+      floatingCount: 32,
+      horizontalSpread: "even",
+      compact: false,
+      staticCols: 8,
+      staticRows: 6,
+    };
+  }
+  return {
+    floatingCount: 44,
+    horizontalSpread: "random",
+    compact: false,
+    staticCols: 9,
+    staticRows: 7,
+  };
+}
+
+function useDecorLayout(): DecorLayout {
+  const [width, setWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1100,
+  );
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return useMemo(() => layoutForWidth(width), [width]);
 }
 
 /* ---------- reduced motion: static centered grid ---------- */
@@ -128,10 +232,8 @@ type DecoItem = {
   animSeed: number;
 };
 
-function buildCenteredDecorations(): DecoItem[] {
+function buildCenteredDecorations(cols: number, rows: number): DecoItem[] {
   const cx = 450;
-  const cols = 9;
-  const rows = 7;
   const stepX = 64;
   const stepY = 56;
   const out: DecoItem[] = [];
@@ -160,10 +262,6 @@ const PAINT_ORDER: Record<DecoKind, number> = {
   cross: 2,
 };
 
-const STATIC_DECORATIONS = buildCenteredDecorations().sort(
-  (a, b) => PAINT_ORDER[a.kind] - PAINT_ORDER[b.kind],
-);
-
 function StaticDecorativePath({
   kind,
   pathD,
@@ -172,6 +270,7 @@ function StaticDecorativePath({
   y,
   scale,
   color,
+  animSeed,
 }: {
   kind: DecoKind;
   pathD: string;
@@ -180,20 +279,30 @@ function StaticDecorativePath({
   y: number;
   scale: number;
   color: string;
+  animSeed: number;
 }) {
   const s = scale * (SCENE_BASE_WIDTH / viewBoxSize);
   const t = `translate(${x},${y}) scale(${s})`;
+  const drawDur = 8.5 + (animSeed % 9) * 0.75;
+  const drawDel = (animSeed * 0.41) % 6;
   return (
     <g transform={t}>
       <path
+        className="deco-static-outline-draw"
         d={pathD}
         fill="none"
+        pathLength={1}
         stroke={color}
         strokeWidth={strokeWidthForKind(kind)}
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="nonScalingStroke"
         opacity={0.48}
+        style={{
+          animationDuration: `${drawDur}s`,
+          animationDelay: `${drawDel}s`,
+          ["--deco-draw-dur" as string]: `${drawDur}s`,
+        }}
       />
     </g>
   );
@@ -209,6 +318,8 @@ function FloatingShape({ p }: { p: FloatingParticle }) {
   const c2 = DECO_PALETTE[(p.paletteI + 2) % DECO_PALETTE.length];
 
   const vb = `0 0 ${view} ${view}`;
+  const draw = !p.useTilt;
+  const pathDrawProps = draw ? { pathLength: 1 } : {};
 
   return (
     <div
@@ -226,12 +337,30 @@ function FloatingShape({ p }: { p: FloatingParticle }) {
     >
       <div className="h-full w-full [transform-style:preserve-3d]">
         <div
-          className="deco-tilt-anim h-full w-full"
-          style={{ animationDuration: `${p.spinSec}s` }}
+          className={
+            p.useTilt
+              ? "deco-tilt-anim h-full w-full"
+              : "deco-no-tilt-pose h-full w-full"
+          }
+          style={
+            p.useTilt ? { animationDuration: `${p.spinSec}s` } : undefined
+          }
         >
           <svg
             viewBox={vb}
-            className="h-full w-full overflow-visible drop-shadow-[0_0_10px_rgba(255,100,180,0.25)]"
+            className={
+              draw
+                ? "deco-path-draw h-full w-full overflow-visible drop-shadow-[0_0_10px_rgba(255,100,180,0.25)]"
+                : "h-full w-full overflow-visible drop-shadow-[0_0_10px_rgba(255,100,180,0.25)]"
+            }
+            style={
+              draw
+                ? ({
+                    ["--deco-draw-dur" as string]: `${p.drawSec}s`,
+                    ["--deco-draw-delay" as string]: `${p.drawDelaySec}s`,
+                  } as CSSProperties)
+                : undefined
+            }
             xmlns="http://www.w3.org/2000/svg"
           >
             <defs>
@@ -255,6 +384,7 @@ function FloatingShape({ p }: { p: FloatingParticle }) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 vectorEffect="nonScalingStroke"
+                {...pathDrawProps}
               />
             </g>
             <path
@@ -265,6 +395,7 @@ function FloatingShape({ p }: { p: FloatingParticle }) {
               strokeLinecap="round"
               strokeLinejoin="round"
               vectorEffect="nonScalingStroke"
+              {...pathDrawProps}
             />
           </svg>
         </div>
@@ -275,7 +406,23 @@ function FloatingShape({ p }: { p: FloatingParticle }) {
 
 export function DecorativeBackground() {
   const reduced = useReducedMotion() ?? false;
-  const particles = useMemo(() => buildFloatingParticles(), []);
+  const layout = useDecorLayout();
+  const particles = useMemo(
+    () =>
+      buildFloatingParticles(
+        layout.floatingCount,
+        layout.horizontalSpread,
+        layout.compact,
+      ),
+    [layout.floatingCount, layout.horizontalSpread, layout.compact],
+  );
+  const staticDecorations = useMemo(
+    () =>
+      buildCenteredDecorations(layout.staticCols, layout.staticRows).sort(
+        (a, b) => PAINT_ORDER[a.kind] - PAINT_ORDER[b.kind],
+      ),
+    [layout.staticCols, layout.staticRows],
+  );
 
   return (
     <div
@@ -288,7 +435,7 @@ export function DecorativeBackground() {
           viewBox="0 0 900 600"
           preserveAspectRatio="xMidYMid slice"
         >
-          {STATIC_DECORATIONS.map((item) => {
+          {staticDecorations.map((item) => {
             const { d, view } = assetForKind(item.kind);
             return (
               <StaticDecorativePath
@@ -300,6 +447,7 @@ export function DecorativeBackground() {
                 y={item.y}
                 scale={item.s}
                 color={item.c}
+                animSeed={item.animSeed}
               />
             );
           })}
