@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Bags of Blessings — HTTP API, Lambda, DynamoDB, Google Sign-In (GIS) + app JWT (no Cognito Hosted UI)
+
+Parameters:
+  GoogleClientId:
+    Type: String
+    Description: Google OAuth Web client ID (same as VITE_GOOGLE_CLIENT_ID) — used to verify Google ID tokens
+  AdminEmail:
+    Type: String
+    Description: Admin email (Resend To + API admin role)
+  AppBaseUrl:
+    Type: String
+    Default: http://localhost:5173
+  ResendApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+
+Conditions:
+  HasResend: !Not [!Equals [!Ref ResendApiKey, ""]]
+  CorsIncludeLocalDev: !Not [!Equals [!Ref AppBaseUrl, "http://localhost:5173"]]
+
+Globals:
+  Function:
+    Timeout: 29
+    MemorySize: 256
+    Runtime: nodejs20.x
+    Architectures: [x86_64]
+
+Resources:
+  AppTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: gsi1pk
+          AttributeType: S
+        - AttributeName: gsi1sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: gsi1pk
+              KeyType: HASH
+            - AttributeName: gsi1sk
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  SessionJwtSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${AWS::StackName}/session-jwt-hs256"
+      Description: HS256 secret for app session JWTs (after Google verifies)
+      GenerateSecretString:
+        PasswordLength: 64
+
+  ResendSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: HasResend
+    Properties:
+      Name: !Sub "${AWS::StackName}/resend-api-key"
+      SecretString: !Sub '{"apiKey":"${ResendApiKey}"}'
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods: [GET, POST, PATCH, DELETE, OPTIONS, HEAD]
+        AllowHeaders: [authorization, content-type]
+        AllowOrigins: !If
+          - CorsIncludeLocalDev
+          - - !Ref AppBaseUrl
+            - "http://localhost:5173"
+          - - !Ref AppBaseUrl
+        MaxAge: 600
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/lambda.ts]
+        Target: node20
+        Format: cjs
+        Sourcemap: false
+        External:
+          - "@aws-sdk/*"
+    Properties:
+      CodeUri: ../api
+      Handler: src/lambda.handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref AppTable
+          GOOGLE_CLIENT_ID: !Ref GoogleClientId
+          SESSION_JWT_SECRET_ARN: !Ref SessionJwtSecret
+          ADMIN_EMAIL: !Ref AdminEmail
+          APP_BASE_URL: !Ref AppBaseUrl
+          RESEND_FROM: "Bags of Blessings <onboarding@resend.dev>"
+          RESEND_SECRET_ARN: !If [HasResend, !Ref ResendSecret, "none"]
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AppTable
+        - Statement:
+            - Effect: Allow
+              Action: [secretsmanager:GetSecretValue]
+              Resource: !Ref SessionJwtSecret
+        - !If
+          - HasResend
+          - Statement:
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: !Ref ResendSecret
+          - !Ref AWS::NoValue
+      Events:
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /
+            Method: ANY
+
+Outputs:
+  HttpApiUrl:
+    Value: !Sub "${HttpApi.ApiEndpoint}/"
+  TableName:
+    Value: !Ref AppTable
+  GoogleClientId:
+    Description: Paste into web/.env as VITE_GOOGLE_CLIENT_ID
+    Value: !Ref GoogleClientId
+  SessionJwtSecretArn:
+    Description: Auto-generated; Lambda reads this at runtime
+    Value: !Ref SessionJwtSecret

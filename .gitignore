@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.aws-sam/
+*.log
+.env
+.env.*
+!.env.example
+web/.env
+web/.env.local
+api/dist/
+packages/shared/dist/
+.DS_Store

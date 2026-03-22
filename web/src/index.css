@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply min-h-screen text-gray-900 antialiased;
+}
+
+/* DecorativeBackground — rise + 3D tilt (disabled when .deco-reduced is set) */
+.perspective-deco {
+  perspective: 1100px;
+  perspective-origin: 50% 35%;
+}
+
+.deco-rise-anim {
+  animation: deco-rise linear infinite;
+  will-change: transform, opacity;
+}
+
+.deco-tilt-anim {
+  animation: deco-tilt ease-in-out infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+@keyframes deco-rise {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, -130vh, 0);
+    opacity: 0.25;
+  }
+}
+
+@keyframes deco-tilt {
+  0% {
+    transform: rotateX(10deg) rotateY(-20deg);
+  }
+  50% {
+    transform: rotateX(-12deg) rotateY(18deg);
+  }
+  100% {
+    transform: rotateX(10deg) rotateY(-20deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deco-rise-anim,
+  .deco-tilt-anim {
+    animation: none !important;
+  }
+
+  .deco-rise-anim {
+    transform: translate3d(0, -20vh, 0);
+    opacity: 0.45;
+  }
+
+  .deco-tilt-anim {
+    transform: rotateX(6deg) rotateY(-8deg);
+  }
+}

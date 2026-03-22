@@ -1,0 +1,13 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "bags-of-blessings"
+resolve_s3 = true
+region = "us-west-2"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = [
+  "AdminEmail=savannah@example.com",
+  "AppBaseUrl=http://localhost:5173",
+  "GoogleClientId=your-id.apps.googleusercontent.com",
+  "ResendApiKey="
+]
