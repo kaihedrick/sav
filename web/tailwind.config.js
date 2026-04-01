@@ -13,7 +13,13 @@ export default {
         },
       },
       fontFamily: {
-        display: ["system-ui", "Segoe UI", "sans-serif"],
+        /** UI + headings (secondary) */
+        sans: ['"DM Sans"', "system-ui", "Segoe UI", "sans-serif"],
+        /** Wordmark + display serif (primary) */
+        serif: ['"Cormorant Garamond"', "Georgia", "serif"],
+        brand: ['"Cormorant Garamond"', "Georgia", "serif"],
+        heading: ['"DM Sans"', "system-ui", "Segoe UI", "sans-serif"],
+        display: ['"Cormorant Garamond"', "Georgia", "serif"],
       },
     },
   },

@@ -66,36 +66,37 @@ export function Layout({
                 onClick={() => setMenuOpen(false)}
               />
             ) : null}
-            <header className="sticky top-0 z-20 border-b border-pink-400/35 bg-zinc-950/80 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-md shadow-black/25">
-              <div className="relative mx-auto flex max-w-3xl items-center justify-between gap-2 px-safe py-2.5 sm:py-3 md:max-w-5xl">
+            <header className="sticky top-0 z-20 overflow-visible border-b border-pink-400/35 bg-zinc-950/80 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-md shadow-black/25">
+              <div className="relative mx-auto max-w-3xl overflow-visible px-safe py-3 md:max-w-5xl">
                 <Link
                   to="/"
-                  className="min-w-0 shrink font-semibold text-bob-pink transition-colors hover:text-pink-300"
+                  className="font-brand absolute left-1/2 top-1/2 z-10 max-w-[min(calc(100%-5.5rem),20rem)] -translate-x-1/2 -translate-y-1/2 text-center text-pink-100 transition-colors hover:text-pink-50"
                   onClick={() => setMenuOpen(false)}
                 >
-                  <span className="block truncate text-sm sm:text-base">
+                  <span className="inline-block max-w-full break-words text-balance text-[1.25rem] font-light leading-snug tracking-[0.06em] antialiased max-sm:text-[clamp(1.35rem,5vw,2rem)] max-sm:leading-[1.25] max-sm:tracking-[0.05em] sm:text-xl sm:tracking-[0.08em]">
                     Bags of Blessings
                   </span>
                 </Link>
 
-                <button
-                  type="button"
-                  className="inline-flex h-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-white/90 transition-colors hover:bg-pink-500/20 sm:hidden"
-                  aria-expanded={menuOpen}
-                  aria-controls="mobile-nav-menu"
-                  aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-                  onClick={() => setMenuOpen((o) => !o)}
-                >
-                  <i
-                    className={`fa-solid ${menuOpen ? "fa-xmark" : "fa-bars"} text-lg`}
-                    aria-hidden
-                  />
-                </button>
+                <div className="relative z-20 flex min-h-[44px] w-full items-center justify-end gap-1.5">
+                  <button
+                    type="button"
+                    className="inline-flex h-10 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-pink-500/20 sm:hidden"
+                    aria-expanded={menuOpen}
+                    aria-controls="mobile-nav-menu"
+                    aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+                    onClick={() => setMenuOpen((o) => !o)}
+                  >
+                    <i
+                      className={`fa-solid ${menuOpen ? "fa-xmark" : "fa-bars"} text-lg`}
+                      aria-hidden
+                    />
+                  </button>
 
-                <nav
-                  className="hidden flex-shrink-0 items-center gap-x-1.5 sm:flex"
-                  aria-label="Main"
-                >
+                  <nav
+                    className="hidden flex-shrink-0 items-center gap-x-1.5 sm:flex"
+                    aria-label="Main"
+                  >
                   <Link
                     to="/"
                     className={iconNavBtn}
@@ -148,7 +149,8 @@ export function Layout({
                   >
                     <i className="fa-solid fa-right-from-bracket" aria-hidden />
                   </button>
-                </nav>
+                  </nav>
+                </div>
 
                 <div
                   id="mobile-nav-menu"
