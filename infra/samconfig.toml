@@ -6,7 +6,7 @@ resolve_s3 = true
 s3_prefix = "sav"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "GoogleClientId=\"86732526103-dchhms8v8od6qa97ktlluf1b5173hqvl.apps.googleusercontent.com\" AdminEmail=\"rewindtothehd@gmail.com,kaihedrick@icloud.com\" AppBaseUrl=\"http://localhost:5173\" GoogleSheetsSpreadsheetId=\"1kmRP2atgkaAIWYzaPlBAUcL_YucKQrtT04j5GLeuYlI\" GoogleSheetsSecretName=\"sav\" GoogleSheetsTabName=\"Sheet1\""
+parameter_overrides = "GoogleClientId=\"86732526103-dchhms8v8od6qa97ktlluf1b5173hqvl.apps.googleusercontent.com\" AdminEmail=\"rewindtothehd@gmail.com,kaihedrick@icloud.com\" AppBaseUrl=\"https://sav-nu.vercel.app\" ExtraCorsOrigins=\"https://sav-24i6t1sjm-kaihedricks-projects.vercel.app\" GoogleSheetsSpreadsheetId=\"1kmRP2atgkaAIWYzaPlBAUcL_YucKQrtT04j5GLeuYlI\" GoogleSheetsSecretName=\"sav\" GoogleSheetsTabName=\"Sheet1\""
 image_repositories = []
 
 [default.global.parameters]

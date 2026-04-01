@@ -13,6 +13,12 @@ import {
 import { saveInventoryExportTemplate } from "../lib/inventoryExportTemplateStorage";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  categoryAccent,
+  itemEmoji,
+  stockLevelFromOnHand,
+  stockStatusClasses,
+} from "../lib/inventoryCardStyle";
 
 type InvItem = {
   id: string;
@@ -67,9 +73,7 @@ export function AdminDashboard() {
         { method: "POST" },
       ),
     onSuccess: (data) => {
-      setImportMsg(
-        `Live Google Sheet updated (${data.rowCount} rows). Contributors can refresh the shared link to see changes.`,
-      );
+      setImportMsg(`Sheet updated · ${data.rowCount} rows`);
       setImportErr(null);
     },
     onError: (e) => {
@@ -92,7 +96,7 @@ export function AdminDashboard() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["inventory"] });
       setImportMsg(
-        `Import done: ${data.created} created, ${data.updated} updated (${data.total} rows). Projected column in the file is ignored — it always comes from live requests.`,
+        `Import · ${data.created} new, ${data.updated} updated (${data.total} rows)`,
       );
       setImportErr(null);
       if (excelInputRef.current) excelInputRef.current.value = "";
@@ -113,6 +117,15 @@ export function AdminDashboard() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quantity }),
+    });
+    qc.invalidateQueries({ queryKey: ["inventory"] });
+  };
+
+  const patchItem = async (itemId: string, patch: { targetQty: number }) => {
+    await apiJson(`/items/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
     });
     qc.invalidateQueries({ queryKey: ["inventory"] });
   };
@@ -159,19 +172,30 @@ export function AdminDashboard() {
   return (
     <Layout isAdmin>
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-white drop-shadow-md">
+          <i className="fa-solid fa-screwdriver-wrench text-pink-200/90" aria-hidden />
           Admin — catalog & stock
         </h1>
         <Link
           to="/admin/requests"
-          className="rounded-full bg-bob-pink px-4 py-2 text-center text-sm font-semibold text-white shadow-md shadow-pink-900/15 transition-colors hover:bg-pink-600"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-bob-pink px-4 py-2 text-center text-sm font-semibold text-white shadow-md shadow-pink-900/15 transition-colors hover:bg-pink-600"
         >
+          <i className="fa-solid fa-inbox" aria-hidden />
           Open request inbox
         </Link>
       </div>
 
       <section className="rounded-2xl border border-pink-200/80 bg-white/95 p-4 shadow-sm shadow-pink-900/5 md:p-6">
-        <h2 className="font-semibold text-bob-pink">Add item</h2>
+        <h2 className="flex items-center gap-2 font-semibold text-bob-pink">
+          <i className="fa-solid fa-plus text-bob-pink/80" aria-hidden />
+          Add item
+        </h2>
+        <p className="mt-2 max-w-2xl text-xs text-bob-muted">
+          <strong className="font-medium text-bob-ink">Target</strong> is how many
+          units you want for this item in the drive. The public list sorts by how
+          far below that goal you still are (using on-hand stock and pending
+          requests).
+        </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <input
             className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
@@ -187,8 +211,9 @@ export function AdminDashboard() {
           />
           <input
             type="number"
+            min={0}
             className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
-            placeholder="Target qty"
+            placeholder="Target (goal units)"
             value={targetQty}
             onChange={(e) => setTargetQty(Number(e.target.value))}
           />
@@ -196,8 +221,12 @@ export function AdminDashboard() {
             type="button"
             disabled={!name || createItem.isPending}
             onClick={() => createItem.mutate()}
-            className="rounded-full bg-bob-ink py-2 font-semibold text-white transition-colors hover:bg-neutral-800 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-bob-ink py-2 font-semibold text-white transition-colors hover:bg-neutral-800 disabled:opacity-50"
           >
+            <i
+              className={`fa-solid ${createItem.isPending ? "fa-spinner fa-spin" : "fa-floppy-disk"}`}
+              aria-hidden
+            />
             Save item
           </button>
         </div>
@@ -205,7 +234,8 @@ export function AdminDashboard() {
 
       <section className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold tracking-tight text-white drop-shadow-sm">
+          <h2 className="flex items-center gap-2 font-semibold tracking-tight text-white drop-shadow-sm">
+            <i className="fa-solid fa-boxes-stacked text-pink-200/90" aria-hidden />
             Inventory
           </h2>
           <div className="flex flex-wrap items-center gap-3">
@@ -244,21 +274,14 @@ export function AdminDashboard() {
             <button
               type="button"
               disabled={importExcel.isPending}
-              className="rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50 disabled:opacity-50"
               onClick={() => excelInputRef.current?.click()}
             >
+              <i
+                className={`fa-solid ${importExcel.isPending ? "fa-spinner fa-spin" : "fa-file-import"} text-xs`}
+                aria-hidden
+              />
               {importExcel.isPending ? "Importing…" : "Import Excel"}
-            </button>
-            <button
-              type="button"
-              className="text-sm font-medium text-bob-pink underline decoration-pink-300 underline-offset-2"
-              onClick={() =>
-                apiJson("/admin/seed", { method: "POST" }).then(() =>
-                  qc.invalidateQueries({ queryKey: ["inventory"] }),
-                )
-              }
-            >
-              Seed sample items
             </button>
             {liveSheet.data?.url ? (
               <>
@@ -266,16 +289,21 @@ export function AdminDashboard() {
                   href={liveSheet.data.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
                 >
+                  <i className="fa-solid fa-up-right-from-square text-xs" aria-hidden />
                   Open live sheet
                 </a>
                 <button
                   type="button"
                   disabled={syncGoogleSheet.isPending}
-                  className="rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50 disabled:opacity-50"
                   onClick={() => syncGoogleSheet.mutate()}
                 >
+                  <i
+                    className={`fa-solid ${syncGoogleSheet.isPending ? "fa-spinner fa-spin" : "fa-cloud-arrow-up"} text-xs`}
+                    aria-hidden
+                  />
                   {syncGoogleSheet.isPending
                     ? "Syncing…"
                     : "Push to Google Sheet"}
@@ -284,50 +312,22 @@ export function AdminDashboard() {
             ) : null}
             <button
               type="button"
-              className="rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
               onClick={() => void downloadExcel()}
             >
+              <i className="fa-solid fa-file-export text-xs" aria-hidden />
               Export Excel
             </button>
             <button
               type="button"
-              className="rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
               onClick={() => void copyInventoryTsv()}
             >
+              <i className="fa-solid fa-copy text-xs" aria-hidden />
               Copy table
-            </button>
-            <button
-              type="button"
-              className="text-sm font-medium text-bob-pink underline decoration-pink-300 underline-offset-2"
-              onClick={async () => {
-              const res = await apiFetch("/export.csv");
-              const blob = await res.blob();
-              const u = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = u;
-              a.download = "inventory.csv";
-              a.click();
-              URL.revokeObjectURL(u);
-            }}
-            >
-              Download CSV
             </button>
           </div>
         </div>
-        <p className="mb-2 max-w-xl text-xs text-pink-100/85">
-          Workbook <strong>Inventory Tracker</strong>:{" "}
-          <strong>Item name</strong>, <strong>Type</strong>, <strong>Price</strong>,{" "}
-          <strong>Stock</strong> (on-hand), <strong>Status</strong> (ignored on import),{" "}
-          <strong>Notes</strong>. Plus <strong>Item ID</strong> (for updates),{" "}
-          <strong>Target</strong> (catalog goal),           <strong>Projected</strong> (export only —
-          ignored on import). Up to 500 rows per import.{" "}
-          <strong>Export Excel</strong> reuses the styling of your last successful import
-          (stored in this browser); otherwise it downloads a matching pink-themed sheet.
-          When the API is configured with a Google Sheet, <strong>Open live sheet</strong> and{" "}
-          <strong>Push to Google Sheet</strong> keep everyone on one shared document (row 1 =
-          headers; data columns A–I: Item ID, Item name, Type, Price, Stock, Status, Notes,
-          Target, Projected).
-        </p>
         {copyMsg && (
           <p className="mb-2 text-sm text-pink-100">{copyMsg}</p>
         )}
@@ -339,114 +339,177 @@ export function AdminDashboard() {
         )}
         <div className="space-y-3">
           {items.map((it) => (
-            <div
+            <AdminInventoryCard
               key={it.id}
-              className="flex flex-col gap-2 rounded-xl border border-pink-200/70 bg-white/90 p-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="font-medium text-bob-ink">{it.name}</p>
-                <p className="text-xs text-bob-muted">
-                  target {it.targetQty}
-                  {it.price != null && Number.isFinite(it.price)
-                    ? ` · price ${it.price}`
-                    : ""}{" "}
-                  · on hand {it.onHand} · projected{" "}
-                  <span className="text-bob-pink">{it.projected}</span>
-                </p>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-bob-ink">
-                Set on-hand
-                <input
-                  type="number"
-                  min={0}
-                  defaultValue={it.onHand}
-                  className="w-24 rounded-lg border border-neutral-200 px-2 py-1 text-bob-ink focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
-                  onBlur={(e) => {
-                    const q = Number(e.target.value);
-                    if (Number.isFinite(q) && q >= 0) setStock(it.id, q);
-                  }}
-                />
-              </label>
-            </div>
+              it={it}
+              onCommitStock={(id, q) => void setStock(id, q)}
+              onCommitTarget={(id, t) => void patchItem(id, { targetQty: t })}
+            />
           ))}
         </div>
       </section>
-
-      <ConsumeStockSection items={items} />
     </Layout>
   );
 }
 
-function ConsumeStockSection({ items }: { items: InvItem[] }) {
-  const qc = useQueryClient();
-  const [rows, setRows] = useState<{ itemId: string; quantity: number }[]>([
-    { itemId: "", quantity: 1 },
-  ]);
+function AdminInventoryCard({
+  it,
+  onCommitStock,
+  onCommitTarget,
+}: {
+  it: InvItem;
+  onCommitStock: (id: string, q: number) => void;
+  onCommitTarget: (id: string, t: number) => void;
+}) {
+  const stockInputRef = useRef<HTMLInputElement>(null);
+  const accent = categoryAccent(it.category || "General");
+  const level = stockLevelFromOnHand(it.onHand);
+  const status = stockStatusClasses(level);
+  const emoji = itemEmoji(it.name, it.category);
+
+  const focusStock = () => stockInputRef.current?.focus();
 
   return (
-    <section className="mt-10 rounded-2xl border border-pink-200/80 bg-white/95 p-4 shadow-sm shadow-pink-900/5">
-      <h2 className="font-semibold text-bob-pink">Post-event: consume stock</h2>
-      <p className="text-sm text-bob-muted">
-        Decrease on-hand after packing bags (per item).
-      </p>
-      <div className="mt-3 space-y-2">
-        {rows.map((r, i) => (
-          <div key={i} className="flex flex-wrap gap-2">
-            <select
-              className="flex-1 rounded-lg border border-neutral-200 bg-white px-2 py-2 text-bob-ink focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
-              value={r.itemId}
-              onChange={(e) => {
-                const n = [...rows];
-                n[i] = { ...n[i], itemId: e.target.value };
-                setRows(n);
-              }}
-            >
-              <option value="">Item…</option>
-              {items.map((it) => (
-                <option key={it.id} value={it.id}>
-                  {it.name}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min={1}
-              className="w-24 rounded-lg border border-neutral-200 px-2 py-2 text-bob-ink focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
-              value={r.quantity}
-              onChange={(e) => {
-                const n = [...rows];
-                n[i] = { ...n[i], quantity: Number(e.target.value) || 1 };
-                setRows(n);
-              }}
-            />
+    <article
+      role="button"
+      tabIndex={0}
+      aria-label={`${it.name}, edit target or on-hand quantity`}
+      onClick={focusStock}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          focusStock();
+        }
+      }}
+      className={`relative cursor-pointer rounded-2xl border border-pink-200/50 border-l-4 ${accent.borderL} ${accent.panelBg} p-4 pr-10 text-left shadow-sm shadow-pink-900/5 ring-1 transition hover:ring-2 hover:ring-pink-300/50 ${accent.ring}`}
+    >
+      <span
+        className="pointer-events-none absolute right-3 top-3 text-bob-pink/45"
+        aria-hidden
+      >
+        <i className="fa-solid fa-pen-to-square text-lg" />
+      </span>
+      <div className="flex flex-wrap items-start gap-3">
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/90 text-2xl shadow-sm"
+          aria-hidden
+        >
+          {emoji}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold text-bob-ink">{it.name}</h2>
+            {(it.category || "").trim() ? (
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${accent.pill}`}
+              >
+                {it.category}
+              </span>
+            ) : null}
           </div>
-        ))}
-        <button
-          type="button"
-          className="text-sm text-bob-pink"
-          onClick={() => setRows([...rows, { itemId: "", quantity: 1 }])}
-        >
-          + Row
-        </button>
-        <button
-          type="button"
-          className="mt-2 block w-full rounded-full bg-bob-ink py-2 font-semibold text-white transition-colors hover:bg-neutral-800 disabled:opacity-50 sm:w-auto sm:px-6"
-          disabled={rows.some((x) => !x.itemId)}
-          onClick={async () => {
-            await apiJson("/admin/stock/consume", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                items: rows.filter((x) => x.itemId),
-              }),
-            });
-            setRows([{ itemId: "", quantity: 1 }]);
-            qc.invalidateQueries({ queryKey: ["inventory"] });
-          }}
-        >
-          Apply consumption
-        </button>
+          {it.price != null && Number.isFinite(it.price) ? (
+            <p className="mt-0.5 text-xs text-bob-muted">
+              <i className="fa-solid fa-tag mr-1 opacity-70" aria-hidden />
+              ${it.price}
+            </p>
+          ) : null}
+          <p className={`mt-1 text-sm ${status.textClass}`}>{status.label}</p>
+          <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-bob-muted">
+                <span className="inline-flex items-center gap-1">
+                  <i
+                    className="fa-solid fa-bullseye text-[0.7rem] opacity-70"
+                    aria-hidden
+                  />
+                  Target
+                </span>
+              </dt>
+              <dd className="mt-0.5">
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  key={`${it.id}-tgt-${it.targetQty}`}
+                  defaultValue={it.targetQty}
+                  className="w-full min-w-0 max-w-[7rem] rounded-lg border border-white/80 bg-white/95 px-2 py-1 font-medium text-bob-ink shadow-sm focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
+                  aria-label={`Target goal for ${it.name}`}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onBlur={(e) => {
+                    const raw = e.target.value.trim();
+                    if (raw === "") {
+                      e.target.value = String(it.targetQty);
+                      return;
+                    }
+                    const t = Math.floor(Number(raw));
+                    if (!Number.isFinite(t) || t < 0) {
+                      e.target.value = String(it.targetQty);
+                      return;
+                    }
+                    if (t !== it.targetQty) onCommitTarget(it.id, t);
+                  }}
+                />
+              </dd>
+            </div>
+            <div>
+              <dt className="text-bob-muted">
+                <span className="inline-flex items-center gap-1">
+                  <i
+                    className="fa-solid fa-warehouse text-[0.7rem] opacity-70"
+                    aria-hidden
+                  />
+                  On hand
+                </span>
+              </dt>
+              <dd className="mt-0.5">
+                <input
+                  ref={stockInputRef}
+                  type="number"
+                  min={0}
+                  step={1}
+                  key={`${it.id}-${it.onHand}`}
+                  defaultValue={it.onHand}
+                  className={`w-full min-w-0 max-w-[7rem] rounded-lg border border-white/80 bg-white/95 px-2 py-1 font-medium shadow-sm focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200 ${
+                    level === "out"
+                      ? "text-red-600"
+                      : level === "low"
+                        ? "text-amber-600"
+                        : "text-emerald-700"
+                  }`}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onBlur={(e) => {
+                    const raw = e.target.value.trim();
+                    if (raw === "") {
+                      e.target.value = String(it.onHand);
+                      return;
+                    }
+                    const q = Math.floor(Number(raw));
+                    if (!Number.isFinite(q) || q < 0) {
+                      e.target.value = String(it.onHand);
+                      return;
+                    }
+                    if (q !== it.onHand) onCommitStock(it.id, q);
+                  }}
+                />
+              </dd>
+            </div>
+            <div>
+              <dt className="text-bob-muted">
+                <span className="inline-flex items-center gap-1">
+                  <i
+                    className="fa-solid fa-chart-line text-[0.7rem] opacity-70"
+                    aria-hidden
+                  />
+                  Projected
+                </span>
+              </dt>
+              <dd className="mt-0.5 font-medium text-bob-pink">{it.projected}</dd>
+            </div>
+          </dl>
+        </div>
       </div>
-    </section>
+    </article>
   );
 }

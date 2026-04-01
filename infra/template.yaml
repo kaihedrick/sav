@@ -15,6 +15,13 @@ Parameters:
   AppBaseUrl:
     Type: String
     Default: http://localhost:5173
+    Description: >
+      Primary site origin (used for CORS, Resend links, etc.). E.g. https://sav-nu.vercel.app
+  ExtraCorsOrigins:
+    Type: String
+    Default: ""
+    Description: >
+      Optional comma-separated extra CORS origins (no spaces), e.g. a Vercel preview deployment URL.
   ResendApiKey:
     Type: String
     NoEcho: true
@@ -46,6 +53,7 @@ Parameters:
 Conditions:
   HasResend: !Not [!Equals [!Ref ResendApiKey, ""]]
   CorsIncludeLocalDev: !Not [!Equals [!Ref AppBaseUrl, "http://localhost:5173"]]
+  HasExtraCorsOrigins: !Not [!Equals [!Ref ExtraCorsOrigins, ""]]
   HasGoogleSheetsSheetId: !Not [!Equals [!Ref GoogleSheetsSpreadsheetId, ""]]
   HasGoogleSheetsSecretArn: !Not [!Equals [!Ref GoogleSheetsSecretArn, ""]]
   HasGoogleSheetsSecretName: !Not [!Equals [!Ref GoogleSheetsSecretName, ""]]
@@ -113,11 +121,18 @@ Resources:
       CorsConfiguration:
         AllowMethods: [GET, POST, PATCH, DELETE, OPTIONS, HEAD]
         AllowHeaders: [authorization, content-type]
-        AllowOrigins: !If
-          - CorsIncludeLocalDev
-          - - !Ref AppBaseUrl
-            - "http://localhost:5173"
-          - - !Ref AppBaseUrl
+        AllowOrigins: !Split
+          - ","
+          - !If
+            - CorsIncludeLocalDev
+            - !If
+              - HasExtraCorsOrigins
+              - !Sub "${AppBaseUrl},http://localhost:5173,${ExtraCorsOrigins}"
+              - !Sub "${AppBaseUrl},http://localhost:5173"
+            - !If
+              - HasExtraCorsOrigins
+              - !Sub "${AppBaseUrl},${ExtraCorsOrigins}"
+              - !Ref AppBaseUrl
         MaxAge: 600
 
   ApiFunction:

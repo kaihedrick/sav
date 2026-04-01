@@ -8,6 +8,7 @@ capabilities = "CAPABILITY_IAM"
 parameter_overrides = [
   "AdminEmail=rewindtothehd@gmail.com",
   "AppBaseUrl=http://localhost:5173",
+  "ExtraCorsOrigins=",
   "GoogleClientId=your-id.apps.googleusercontent.com",
   "ResendApiKey=",
   "GoogleSheetsSpreadsheetId=",

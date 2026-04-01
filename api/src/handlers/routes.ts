@@ -593,23 +593,6 @@ export async function handleRequest(
       return json(200, updated, origin);
     }
 
-    const consumeMatch = path === "/admin/stock/consume" && method === "POST";
-    if (consumeMatch) {
-      if (!admin) return json(403, { error: "Admin only" }, origin);
-      const body = JSON.parse(event.body || "{}");
-      const p = z
-        .object({
-          items: z.array(z.object({ itemId: z.string(), quantity: z.number().int().positive() })),
-        })
-        .parse(body);
-      const results: { itemId: string; quantity: number }[] = [];
-      for (const row of p.items) {
-        const q = await repo.adjustStock(row.itemId, -row.quantity);
-        results.push({ itemId: row.itemId, quantity: q });
-      }
-      return json(200, { results }, origin);
-    }
-
     if (path === "/admin/seed" && method === "POST") {
       if (!admin) return json(403, { error: "Admin only" }, origin);
       const existing = await repo.listItems();

@@ -26,29 +26,19 @@ export function LoginPage() {
         <h1 className="text-center text-2xl font-bold text-bob-pink">
           Bags of Blessings
         </h1>
-        <p className="mt-2 text-center text-sm text-bob-muted">
-          Sign in with Google to view needs and share what you can bring.
-        </p>
         {!ready && (
-          <p className="mt-4 rounded-xl border border-pink-200 bg-pink-50/80 p-3 text-sm text-bob-ink">
-            Set <code className="rounded bg-white/90 px-1 text-xs text-bob-pink">VITE_GOOGLE_CLIENT_ID</code>{" "}
-            and{" "}
-            <code className="rounded bg-white/90 px-1 text-xs text-bob-pink">VITE_API_URL</code>{" "}
-            locally in <code className="rounded bg-white/90 px-1 text-xs">web/.env</code>, or in your host’s
-            environment (e.g. Vercel → Settings → Environment Variables), then rebuild.
+          <p className="mt-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50/90 p-3 text-sm text-bob-ink">
+            <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-600" aria-hidden />
+            <span>
+              Set <code className="text-xs">VITE_API_URL</code> &{" "}
+              <code className="text-xs">VITE_GOOGLE_CLIENT_ID</code> (env / Vercel), then rebuild.
+            </span>
           </p>
         )}
         {apiAuthError && (
-          <p className="mt-4 rounded-xl border border-pink-300/80 bg-pink-50/90 p-3 text-sm text-bob-ink">
-            <span className="font-semibold text-bob-rose">Server sign-in error:</span>{" "}
-            {apiAuthError}
-            <span className="mt-1 block text-xs text-bob-muted">
-              If this says <code className="text-[11px] text-bob-ink">Missing bearer token</code>, redeploy
-              the API (<code className="text-[11px]">sam deploy</code>) so{" "}
-              <code className="text-[11px]">/auth/google</code> is live. Other messages usually mean Lambda{" "}
-              <code className="text-[11px]">GOOGLE_CLIENT_ID</code> must match this Web client ID or the
-              session secret env is wrong.
-            </span>
+          <p className="mt-4 flex gap-2 rounded-xl border border-pink-300/80 bg-pink-50/90 p-3 text-sm text-bob-ink">
+            <i className="fa-solid fa-circle-xmark mt-0.5 text-bob-rose" aria-hidden />
+            <span>{apiAuthError}</span>
           </p>
         )}
         {ready && (

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "../components/Layout";
 import { apiJson, apiFetch } from "../lib/api";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getIdToken } from "../lib/tokens";
 import { isAdminFromToken } from "../lib/sessionJwt";
 import {
@@ -10,6 +10,7 @@ import {
   stockLevelFromOnHand,
   stockStatusClasses,
 } from "../lib/inventoryCardStyle";
+import { IconButton } from "../components/IconButton";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "";
 
@@ -44,11 +45,6 @@ export function HomePage() {
   const inv = useQuery({
     queryKey: ["inventory"],
     queryFn: () => apiJson<{ items: InvItem[] }>("/inventory"),
-  });
-
-  const liveSheet = useQuery({
-    queryKey: ["inventory-sheet"],
-    queryFn: () => apiJson<{ url: string | null }>("/inventory/sheet"),
   });
 
   const mine = useQuery({
@@ -113,6 +109,40 @@ export function HomePage() {
     },
   });
 
+  const [quickOrderItem, setQuickOrderItem] = useState<InvItem | null>(null);
+  const [quickQty, setQuickQty] = useState(1);
+
+  useEffect(() => {
+    if (quickOrderItem) setQuickQty(1);
+  }, [quickOrderItem]);
+
+  useEffect(() => {
+    if (!quickOrderItem) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setQuickOrderItem(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [quickOrderItem]);
+
+  const quickCommit = useMutation({
+    mutationFn: (payload: { itemId: string; qty: number }) =>
+      apiJson("/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lines: [{ itemId: payload.itemId, qty: payload.qty }],
+        }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      qc.invalidateQueries({ queryKey: ["my-requests"] });
+      qc.invalidateQueries({ queryKey: ["community-requests"] });
+      qc.invalidateQueries({ queryKey: ["admin-requests"] });
+      setQuickOrderItem(null);
+    },
+  });
+
   const items = inv.data?.items ?? [];
 
   function formatLine(l: { itemId: string; qty: number }) {
@@ -129,27 +159,12 @@ export function HomePage() {
       <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md md:text-3xl">
         What we need
       </h1>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-pink-100/90">
-        Items are ordered by urgency. Pending commitments count toward projected
-        totals until Savannah rejects them. Cards are tinted by category; stock
-        status uses on-hand quantity only.
-      </p>
-      {liveSheet.data?.url ? (
-        <p className="mt-2">
-          <a
-            href={liveSheet.data.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-white underline decoration-pink-300 underline-offset-2 hover:text-pink-100"
-          >
-            Open the shared inventory (Google Sheet)
-          </a>
-        </p>
-      ) : null}
-
       <section className="mt-6 space-y-3">
         {inv.isLoading && (
-          <p className="text-sm text-pink-200/90">Loading…</p>
+          <p className="text-pink-200/90" aria-live="polite">
+            <i className="fa-solid fa-spinner fa-spin" aria-hidden />{" "}
+            <span className="sr-only">Loading</span>
+          </p>
         )}
         {inv.error && (
           <p className="rounded-xl border border-pink-200 bg-pink-50/90 px-3 py-2 text-sm text-bob-rose">
@@ -164,8 +179,23 @@ export function HomePage() {
           return (
             <article
               key={it.id}
-              className={`rounded-2xl border border-pink-200/50 border-l-4 ${accent.borderL} ${accent.panelBg} p-4 shadow-sm shadow-pink-900/5 ring-1 ${accent.ring}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setQuickOrderItem(it)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setQuickOrderItem(it);
+                }
+              }}
+              className={`relative cursor-pointer rounded-2xl border border-pink-200/50 border-l-4 ${accent.borderL} ${accent.panelBg} p-4 pr-10 text-left shadow-sm shadow-pink-900/5 ring-1 transition hover:ring-2 hover:ring-pink-300/50 ${accent.ring}`}
             >
+              <span
+                className="pointer-events-none absolute right-3 top-3 text-bob-pink/45"
+                aria-hidden
+              >
+                <i className="fa-solid fa-circle-plus text-lg" />
+              </span>
               <div className="flex flex-wrap items-start gap-3">
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/90 text-2xl shadow-sm"
@@ -208,13 +238,83 @@ export function HomePage() {
         })}
       </section>
 
+      {quickOrderItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          role="presentation"
+          onClick={() => setQuickOrderItem(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quick-order-title"
+            className="w-full max-w-md rounded-2xl border border-pink-200 bg-white p-5 shadow-xl shadow-pink-900/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="quick-order-title"
+              className="flex items-center gap-2 text-lg font-semibold text-bob-ink"
+            >
+              <i className="fa-solid fa-hand-holding-heart text-bob-pink" aria-hidden />
+              {quickOrderItem.name}
+            </h2>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-bob-ink">
+                <i className="fa-solid fa-hashtag text-bob-muted" title="Qty" aria-hidden />
+                <span className="sr-only">Quantity</span>
+                <input
+                  type="number"
+                  min={1}
+                  autoFocus
+                  className="w-24 rounded-xl border border-neutral-200 px-3 py-2.5 text-base text-zinc-950 focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
+                  value={quickQty}
+                  onChange={(e) =>
+                    setQuickQty(Math.max(1, Number(e.target.value) || 1))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      quickCommit.mutate({
+                        itemId: quickOrderItem.id,
+                        qty: quickQty,
+                      });
+                    }
+                  }}
+                />
+              </label>
+              <IconButton
+                icon="fa-check"
+                label={quickCommit.isPending ? "Sending" : "Submit"}
+                disabled={quickCommit.isPending || quickQty < 1}
+                onClick={() =>
+                  quickCommit.mutate({
+                    itemId: quickOrderItem.id,
+                    qty: quickQty,
+                  })
+                }
+                className="h-11 w-11 rounded-full bg-bob-pink text-white shadow-md transition-colors hover:bg-pink-600 disabled:opacity-50"
+              />
+              <IconButton
+                icon="fa-xmark"
+                label="Close"
+                onClick={() => setQuickOrderItem(null)}
+                className="h-11 w-11 rounded-full border border-neutral-200 bg-white text-bob-muted hover:bg-neutral-50"
+              />
+            </div>
+            {quickCommit.isError && (
+              <p className="mt-3 text-sm text-bob-rose">
+                {(quickCommit.error as Error).message}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       <section className="mt-10 rounded-2xl border border-pink-200/80 bg-white/95 p-4 shadow-sm shadow-pink-900/5 md:p-6">
-        <h2 className="text-lg font-semibold text-bob-pink">
-          My commitment (new request)
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-bob-pink">
+          <i className="fa-solid fa-pen-to-square" aria-hidden />
+          New request
         </h2>
-        <p className="mt-1 text-sm text-bob-muted">
-          Add one or more items and quantities you plan to bring.
-        </p>
         <div className="mt-4 space-y-3">
           {lines.map((row, idx) => (
             <div
@@ -252,35 +352,36 @@ export function HomePage() {
                 }}
               />
               {lines.length > 1 && (
-                <button
-                  type="button"
-                  className="text-sm font-medium text-bob-rose underline decoration-pink-300 underline-offset-2"
+                <IconButton
+                  icon="fa-trash"
+                  label="Remove line"
+                  className="h-10 w-10 rounded-lg text-bob-rose hover:bg-pink-50"
                   onClick={() => setLines(lines.filter((_, i) => i !== idx))}
-                >
-                  Remove
-                </button>
+                />
               )}
             </div>
           ))}
           <button
             type="button"
-            className="text-sm font-medium text-bob-pink"
+            className="inline-flex items-center gap-2 text-sm font-medium text-bob-pink"
             onClick={() => setLines([...lines, { itemId: "", qty: 1 }])}
           >
-            + Add another line
+            <i className="fa-solid fa-plus" aria-hidden />
+            Line
           </button>
         </div>
-        <button
-          type="button"
-          disabled={
-            createReq.isPending ||
-            lines.every((l) => !l.itemId || l.qty < 1)
-          }
-          onClick={() => createReq.mutate()}
-          className="mt-4 w-full rounded-full border-2 border-pink-400/60 bg-bob-pink py-3 font-semibold text-white shadow-lg shadow-pink-900/25 transition-colors hover:bg-pink-600 disabled:opacity-50 md:w-auto md:px-10"
-        >
-          Submit request
-        </button>
+        <div className="mt-4">
+          <IconButton
+            icon="fa-paper-plane"
+            label={createReq.isPending ? "Sending" : "Submit request"}
+            disabled={
+              createReq.isPending ||
+              lines.every((l) => !l.itemId || l.qty < 1)
+            }
+            onClick={() => createReq.mutate()}
+            className="h-12 w-12 rounded-full border-2 border-pink-400/60 bg-bob-pink text-lg text-white shadow-lg shadow-pink-900/25 transition-colors hover:bg-pink-600 disabled:opacity-50"
+          />
+        </div>
         {createReq.isError && (
           <p className="mt-2 text-sm text-bob-rose">
             {(createReq.error as Error).message}
@@ -289,26 +390,30 @@ export function HomePage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-lg font-semibold tracking-tight text-white drop-shadow-sm">
-          {admin ? "All contributor requests" : "What others are bringing"}
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white drop-shadow-sm">
+          <i
+            className={`fa-solid ${admin ? "fa-clipboard-list" : "fa-users"}`}
+            aria-hidden
+          />
+          {admin ? "All requests" : "Community"}
         </h2>
-        <p className="mt-1 max-w-2xl text-sm text-pink-100/85">
-          {admin
-            ? "Manage status for any request (same actions as the inbox). Pending rows affect projected inventory."
-            : "Volunteers who signed up before you. Names are the first and last name each person saved on first sign-in."}
-        </p>
         {!admin && community.isLoading && (
-          <p className="mt-3 text-sm text-pink-200/90">Loading…</p>
+          <p className="mt-3 text-pink-200/90" aria-live="polite">
+            <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+            <span className="sr-only">Loading</span>
+          </p>
         )}
         {admin && allForAdmin.isLoading && (
-          <p className="mt-3 text-sm text-pink-200/90">Loading…</p>
+          <p className="mt-3 text-pink-200/90" aria-live="polite">
+            <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+            <span className="sr-only">Loading</span>
+          </p>
         )}
         <ul className="mt-3 space-y-3">
           {othersList.length === 0 && !community.isLoading && !allForAdmin.isLoading && (
-            <li className="rounded-2xl border border-pink-200/40 bg-black/20 px-4 py-3 text-sm text-pink-100/90 backdrop-blur-sm">
-              {admin
-                ? "No requests in the system yet."
-                : "No one else has posted a commitment yet."}
+            <li className="flex items-center gap-2 rounded-2xl border border-pink-200/40 bg-black/20 px-4 py-3 text-sm text-pink-100/90 backdrop-blur-sm">
+              <i className="fa-solid fa-inbox" aria-hidden />
+              Empty
             </li>
           )}
           {othersList.map((r) => (
@@ -330,33 +435,30 @@ export function HomePage() {
               </ul>
               {admin && r.status === "pending" && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="rounded-full border border-pink-300/80 bg-pink-50 px-3 py-1.5 text-xs font-medium text-bob-rose"
+                  <IconButton
+                    icon="fa-xmark"
+                    label="Reject"
+                    className="h-9 w-9 rounded-full border border-pink-300/80 bg-pink-50 text-bob-rose hover:bg-pink-100"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "rejected" })
                     }
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full bg-bob-pink px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-pink-600"
+                  />
+                  <IconButton
+                    icon="fa-check"
+                    label="Mark received"
+                    className="h-9 w-9 rounded-full bg-bob-pink text-white shadow-sm hover:bg-pink-600"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "received" })
                     }
-                  >
-                    Mark received
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-bob-ink hover:bg-pink-50"
+                  />
+                  <IconButton
+                    icon="fa-ban"
+                    label="Not brought"
+                    className="h-9 w-9 rounded-full border border-neutral-300 bg-white text-bob-ink hover:bg-pink-50"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "not_brought" })
                     }
-                  >
-                    Not brought
-                  </button>
+                  />
                 </div>
               )}
             </li>
@@ -365,12 +467,10 @@ export function HomePage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-lg font-semibold tracking-tight text-white drop-shadow-sm">
-          My requests
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white drop-shadow-sm">
+          <i className="fa-solid fa-user" aria-hidden />
+          Mine
         </h2>
-        <p className="mt-1 max-w-2xl text-sm text-pink-100/85">
-          Edit or delete only your own pending commitments.
-        </p>
         <ul className="mt-3 space-y-3">
           {(mine.data?.requests ?? []).map((r) => (
             <li
@@ -390,13 +490,14 @@ export function HomePage() {
               </ul>
               {r.status === "pending" && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-bob-ink hover:bg-pink-50"
+                  <IconButton
+                    icon="fa-pen"
+                    label="Edit quantity"
+                    className="h-9 w-9 rounded-full border border-neutral-200 bg-white text-bob-ink hover:bg-pink-50"
                     onClick={async () => {
                       const qty = Number(
                         prompt(
-                          "New total qty for first line?",
+                          "Qty for first line?",
                           String(r.lines[0]?.qty ?? 1),
                         ),
                       );
@@ -415,12 +516,11 @@ export function HomePage() {
                       qc.invalidateQueries({ queryKey: ["community-requests"] });
                       qc.invalidateQueries({ queryKey: ["admin-requests"] });
                     }}
-                  >
-                    Quick edit qty
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full border border-pink-300/80 bg-pink-50 px-3 py-1 text-xs font-medium text-bob-rose"
+                  />
+                  <IconButton
+                    icon="fa-trash"
+                    label="Delete request"
+                    className="h-9 w-9 rounded-full border border-pink-300/80 bg-pink-50 text-bob-rose hover:bg-pink-100"
                     onClick={async () => {
                       if (!confirm("Delete this request?")) return;
                       await apiFetch(`/requests/${r.id}`, { method: "DELETE" });
@@ -429,9 +529,7 @@ export function HomePage() {
                       qc.invalidateQueries({ queryKey: ["community-requests"] });
                       qc.invalidateQueries({ queryKey: ["admin-requests"] });
                     }}
-                  >
-                    Delete
-                  </button>
+                  />
                 </div>
               )}
             </li>

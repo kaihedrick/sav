@@ -436,7 +436,7 @@ export function DecorativeBackground() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-gradient-to-b from-black via-[#10060d] to-[#030102]"
+      className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-gradient-to-b from-black via-[#10060d] to-[#030102]"
       aria-hidden
     >
       {reduced ? (

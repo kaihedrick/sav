@@ -100,13 +100,6 @@ export async function setStock(itemId: string, quantity: number): Promise<void> 
   );
 }
 
-export async function adjustStock(itemId: string, delta: number): Promise<number> {
-  const current = await getStock(itemId);
-  const next = Math.max(0, current + delta);
-  await setStock(itemId, next);
-  return next;
-}
-
 export async function listAllRequests(): Promise<ContributionRequest[]> {
   const out = await client.send(
     new QueryCommand({
