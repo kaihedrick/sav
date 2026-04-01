@@ -13,6 +13,7 @@ import {
 import { saveInventoryExportTemplate } from "../lib/inventoryExportTemplateStorage";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { CherryBlossomCardBg } from "../components/CherryBlossomCardBg";
 import {
   categoryAccent,
   inventoryGlassCardClass,
@@ -186,7 +187,9 @@ export function AdminDashboard() {
         </Link>
       </div>
 
-      <section className="surface-glass p-4 md:p-6">
+      <section className="surface-glass relative isolate overflow-hidden p-4 md:p-6">
+        <CherryBlossomCardBg density="panel" />
+        <div className="relative z-10">
         <h2 className="flex items-center gap-2 font-semibold text-pink-100">
           <i className="fa-solid fa-plus text-pink-300/90" aria-hidden />
           Add item
@@ -230,6 +233,7 @@ export function AdminDashboard() {
             />
             Save item
           </button>
+        </div>
         </div>
       </section>
 
@@ -384,13 +388,14 @@ function AdminInventoryCard({
       }}
       className={inventoryGlassCardClass(accent)}
     >
+      <CherryBlossomCardBg />
       <span
-        className="pointer-events-none absolute right-3 top-3 text-pink-300/50"
+        className="pointer-events-none absolute right-3 top-3 z-10 text-pink-300/50"
         aria-hidden
       >
         <i className="fa-solid fa-pen-to-square text-lg" />
       </span>
-      <div className="flex flex-wrap items-start gap-3">
+      <div className="relative z-10 flex flex-wrap items-start gap-3">
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-2xl shadow-sm"
           aria-hidden

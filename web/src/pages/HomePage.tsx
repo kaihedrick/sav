@@ -12,6 +12,7 @@ import {
   stockStatusClasses,
 } from "../lib/inventoryCardStyle";
 import { IconButton } from "../components/IconButton";
+import { CherryBlossomCardBg } from "../components/CherryBlossomCardBg";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "";
 
@@ -191,13 +192,14 @@ export function HomePage() {
               }}
               className={inventoryGlassCardClass(accent)}
             >
+              <CherryBlossomCardBg />
               <span
-                className="pointer-events-none absolute right-3 top-3 text-pink-300/50"
+                className="pointer-events-none absolute right-3 top-3 z-10 text-pink-300/50"
                 aria-hidden
               >
                 <i className="fa-solid fa-circle-plus text-lg" />
               </span>
-              <div className="flex flex-wrap items-start gap-3">
+              <div className="relative z-10 flex flex-wrap items-start gap-3">
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-2xl shadow-sm"
                   aria-hidden
@@ -249,9 +251,11 @@ export function HomePage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="quick-order-title"
-            className="surface-glass-modal w-full max-w-md p-5"
+            className="surface-glass-modal relative isolate w-full max-w-md overflow-hidden p-5"
             onClick={(e) => e.stopPropagation()}
           >
+            <CherryBlossomCardBg density="panel" />
+            <div className="relative z-10">
             <h2
               id="quick-order-title"
               className="flex items-center gap-2 text-lg font-semibold text-pink-50"
@@ -307,11 +311,14 @@ export function HomePage() {
                 {(quickCommit.error as Error).message}
               </p>
             )}
+            </div>
           </div>
         </div>
       )}
 
-      <section className="surface-glass mt-10 p-4 md:p-6">
+      <section className="surface-glass relative isolate mt-10 overflow-hidden p-4 md:p-6">
+        <CherryBlossomCardBg density="panel" />
+        <div className="relative z-10">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-pink-100">
           <i className="fa-solid fa-pen-to-square" aria-hidden />
           New request
@@ -388,6 +395,7 @@ export function HomePage() {
             {(createReq.error as Error).message}
           </p>
         )}
+        </div>
       </section>
 
       <section className="mt-10">

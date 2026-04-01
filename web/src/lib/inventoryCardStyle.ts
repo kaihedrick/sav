@@ -176,7 +176,7 @@ export function categoryAccent(category: string) {
 
 /** Shell classes matching the app nav: zinc glass + colored left edge. */
 export function inventoryGlassCardClass(accent: (typeof CATEGORY_PALETTE)[number]): string {
-  return `relative cursor-pointer rounded-2xl border border-pink-400/35 border-l-4 ${accent.borderL} bg-zinc-950/80 p-4 pr-10 text-left shadow-md shadow-black/25 backdrop-blur-md ring-1 ring-pink-400/20 transition hover:ring-2 hover:ring-pink-400/40`;
+  return `relative isolate cursor-pointer overflow-hidden rounded-2xl border border-pink-400/35 border-l-4 ${accent.borderL} bg-zinc-950/80 p-4 pr-10 text-left shadow-md shadow-black/25 backdrop-blur-md ring-1 ring-pink-400/20 transition hover:ring-2 hover:ring-pink-400/40`;
 }
 
 /** Emoji from item name + category (no extra dependencies). */
