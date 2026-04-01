@@ -70,12 +70,10 @@ export function Layout({
               <div className="relative mx-auto max-w-3xl overflow-visible px-safe py-3 md:max-w-5xl">
                 <Link
                   to="/"
-                  className="font-brand absolute left-1/2 top-1/2 z-10 max-w-[min(calc(100%-5.5rem),20rem)] -translate-x-1/2 -translate-y-1/2 text-center text-pink-100 transition-colors hover:text-pink-50"
+                  className="font-brand absolute left-1/2 top-1/2 z-10 inline-block max-w-[min(calc(100%-5.5rem),20rem)] -translate-x-1/2 -translate-y-1/2 break-words text-balance text-center text-[1.25rem] font-light leading-snug tracking-[0.06em] text-pink-100 antialiased transition-colors hover:text-pink-50 max-sm:text-[clamp(1.35rem,5vw,2rem)] max-sm:leading-[1.25] max-sm:tracking-[0.05em] sm:text-xl sm:tracking-[0.08em]"
                   onClick={() => setMenuOpen(false)}
                 >
-                  <span className="inline-block max-w-full break-words text-balance text-[1.25rem] font-light leading-snug tracking-[0.06em] antialiased max-sm:text-[clamp(1.35rem,5vw,2rem)] max-sm:leading-[1.25] max-sm:tracking-[0.05em] sm:text-xl sm:tracking-[0.08em]">
-                    Bags of Blessings
-                  </span>
+                  Bags of Blessings
                 </Link>
 
                 <div className="relative z-20 flex min-h-[44px] w-full items-center justify-end gap-1.5">
