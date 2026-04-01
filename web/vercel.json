@@ -3,7 +3,13 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html",
+      "missing": [{ "type": "file", "value": "/$1" }]
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
