@@ -13,11 +13,9 @@ export function CherryBlossomCardBg({ density = "card" }: CherryBlossomCardBgPro
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-[1] overflow-hidden rounded-[inherit] bg-no-repeat"
+      className="pointer-events-none absolute inset-0 z-[1] overflow-hidden rounded-[inherit] bg-right bg-no-repeat max-md:bg-[length:64%_auto] md:bg-[length:42%_auto]"
       style={{
         backgroundImage: `url(${sakuraCamoUrl})`,
-        backgroundSize: "42% auto",
-        backgroundPosition: "right center",
         opacity: layerOpacity,
       }}
       aria-hidden
