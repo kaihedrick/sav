@@ -34,6 +34,8 @@ export async function verifyGoogleIdToken(idToken: string): Promise<{
   sub: string;
   email: string;
   name?: string;
+  givenName?: string;
+  familyName?: string;
 }> {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID not set");
@@ -47,26 +49,43 @@ export async function verifyGoogleIdToken(idToken: string): Promise<{
     sub: String(payload.sub),
     email,
     name: typeof payload.name === "string" ? payload.name : undefined,
+    givenName:
+      typeof payload.given_name === "string" ? payload.given_name : undefined,
+    familyName:
+      typeof payload.family_name === "string" ? payload.family_name : undefined,
   };
 }
 
-export async function mintSessionJwt(google: {
+/** One or more admin emails: `ADMIN_EMAIL` may be comma- or semicolon-separated. */
+function adminEmailList(): string[] {
+  const raw = process.env.ADMIN_EMAIL ?? "";
+  return raw
+    .split(/[,;]/)
+    .map((e) => e.toLowerCase().trim())
+    .filter(Boolean);
+}
+
+export async function mintSessionJwt(input: {
   sub: string;
   email: string;
   name?: string;
+  /** Preferred display name (e.g. from saved profile). */
+  displayName?: string;
 }): Promise<string> {
-  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
-  const email = google.email.toLowerCase().trim();
+  const admins = adminEmailList();
+  const email = input.email.toLowerCase().trim();
   const role =
-    adminEmail && email === adminEmail ? "admin" : "contributor";
+    admins.length > 0 && admins.includes(email) ? "admin" : "contributor";
   const secret = await getJwtSecretBytes();
+  const display =
+    input.displayName?.trim() || input.name?.trim() || "";
   return new SignJWT({
-    email: google.email,
-    name: google.name ?? "",
+    email: input.email,
+    name: display,
     role,
   })
     .setProtectedHeader({ alg: "HS256" })
-    .setSubject(google.sub)
+    .setSubject(input.sub)
     .setIssuer("bags-api")
     .setAudience("bags-web")
     .setIssuedAt()
@@ -92,8 +111,8 @@ export async function verifyBearerToken(token: string): Promise<AuthUser> {
 
 export function isAdmin(user: AuthUser): boolean {
   if (user.groups.includes("admin")) return true;
-  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
   const email = user.email?.toLowerCase().trim();
-  if (adminEmail && email && adminEmail === email) return true;
-  return false;
+  if (!email) return false;
+  const admins = adminEmailList();
+  return admins.length > 0 && admins.includes(email);
 }

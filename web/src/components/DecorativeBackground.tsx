@@ -199,6 +199,16 @@ function layoutForWidth(w: number): DecorLayout {
       staticRows: 6,
     };
   }
+  /* Ultra-wide: ~30% of the 1100–1919 floater count so 1920px doesn’t feel crowded */
+  if (w >= 1920) {
+    return {
+      floatingCount: 13,
+      horizontalSpread: "random",
+      compact: false,
+      staticCols: 5,
+      staticRows: 4,
+    };
+  }
   return {
     floatingCount: 44,
     horizontalSpread: "random",

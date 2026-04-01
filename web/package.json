@@ -11,10 +11,12 @@
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
     "@tanstack/react-query": "^5.62.8",
+    "exceljs": "^4.4.0",
     "motion": "^11.15.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.1.1"
+    "react-router-dom": "^7.1.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

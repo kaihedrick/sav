@@ -21,6 +21,15 @@ import { projectedQtyForItem, sortItemsByPriority } from "../domain/projections.
 import type { ItemEntity, RequestStatus } from "../domain/types.js";
 import { randomUUID } from "node:crypto";
 import { notifyAdminRequest } from "../integrations/resend.js";
+import {
+  clearAndWriteInventoryRows,
+  getPublicSheetViewUrl,
+  isGoogleSheetsSyncEnabled,
+} from "../integrations/googleSheets.js";
+import {
+  inventoryWebStatusLabel,
+  itemDisplayNameForExport,
+} from "../lib/inventoryLabels.js";
 
 const lineSchema = z.object({
   itemId: z.string().min(1),
@@ -69,6 +78,33 @@ function httpRoutePath(event: APIGatewayProxyEventV2 | APIGatewayProxyEvent): st
   let p = noQuery.replace(/\/$/, "") || "/";
   if (!p.startsWith("/")) p = `/${p}`;
   return p;
+}
+
+/** Strip API stage / custom prefix so `/prod/admin/items/import` matches `/admin/items/import`. */
+const ROUTE_ANCHOR_SEGMENTS = new Set([
+  "auth",
+  "me",
+  "health",
+  "inventory",
+  "items",
+  "requests",
+  "admin",
+  "my-requests",
+  "community-requests",
+]);
+
+function normalizePathForRouting(path: string): string {
+  const noQuery = path.split("?")[0] ?? path;
+  let p = noQuery.replace(/\/$/, "") || "/";
+  if (!p.startsWith("/")) p = `/${p}`;
+  const segs = p.split("/").filter(Boolean);
+  if (segs.length === 0) return "/";
+  const idx = segs.findIndex(
+    (s) =>
+      ROUTE_ANCHOR_SEGMENTS.has(s.toLowerCase()) || s.includes("."),
+  );
+  if (idx < 0) return p;
+  return `/${segs.slice(idx).join("/")}`;
 }
 
 function httpMethodFromEvent(
@@ -122,7 +158,7 @@ export async function handleRequest(
   const origin =
     event.headers?.origin ?? event.headers?.Origin ?? undefined;
   const method = httpMethodFromEvent(event);
-  const path = httpRoutePath(event);
+  const path = normalizePathForRouting(httpRoutePath(event));
 
   if (method === "OPTIONS") {
     return { statusCode: 204, headers: corsHeaders(origin), body: "" };
@@ -132,6 +168,12 @@ export async function handleRequest(
     return json(200, { ok: true }, origin);
   }
 
+  /** Public link to the live Google Sheet (when the API is configured with a spreadsheet ID). */
+  if (path === "/inventory/sheet" && method === "GET") {
+    const url = getPublicSheetViewUrl();
+    return json(200, { url }, origin);
+  }
+
   if (isPostAuthGoogle(method, path)) {
     try {
       const body = JSON.parse(event.body || "{}");
@@ -139,10 +181,28 @@ export async function handleRequest(
         .object({ credential: z.string().min(20) })
         .parse(body);
       const google = await verifyGoogleIdToken(credential);
-      const accessToken = await mintSessionJwt(google);
+      const profile = await repo.getUserProfile(google.sub);
+      const displayFromProfile =
+        profile?.firstName?.trim() && profile?.lastName?.trim()
+          ? `${profile.firstName.trim()} ${profile.lastName.trim()}`
+          : undefined;
+      const accessToken = await mintSessionJwt({
+        sub: google.sub,
+        email: google.email,
+        name: google.name,
+        displayName: displayFromProfile,
+      });
+      const needsProfile =
+        !profile?.firstName?.trim() || !profile?.lastName?.trim();
       return json(
         200,
-        { accessToken, expiresIn: 7 * 24 * 3600 },
+        {
+          accessToken,
+          expiresIn: 7 * 24 * 3600,
+          needsProfile,
+          prefillFirstName: google.givenName ?? "",
+          prefillLastName: google.familyName ?? "",
+        },
         origin,
       );
     } catch (e) {
@@ -158,6 +218,107 @@ export async function handleRequest(
   const admin = isAdmin(user);
 
   try {
+    if (path === "/me" && method === "GET") {
+      const profile = await repo.getUserProfile(user.sub);
+      const needsProfile =
+        !profile?.firstName?.trim() || !profile?.lastName?.trim();
+      return json(
+        200,
+        {
+          email: user.email ?? "",
+          firstName: profile?.firstName ?? "",
+          lastName: profile?.lastName ?? "",
+          needsProfile,
+        },
+        origin,
+      );
+    }
+
+    if (path === "/me" && method === "PATCH") {
+      const body = JSON.parse(event.body || "{}");
+      const p = z
+        .object({
+          firstName: z.string().trim().min(1).max(80),
+          lastName: z.string().trim().min(1).max(80),
+        })
+        .parse(body);
+      if (!user.email) {
+        return json(400, { error: "Email missing from session" }, origin);
+      }
+      const saved = await repo.putUserProfile({
+        userId: user.sub,
+        email: user.email,
+        firstName: p.firstName,
+        lastName: p.lastName,
+      });
+      const displayName =
+        `${saved.firstName} ${saved.lastName}`.trim();
+      const accessToken = await mintSessionJwt({
+        sub: user.sub,
+        email: user.email,
+        displayName,
+      });
+      return json(
+        200,
+        {
+          accessToken,
+          expiresIn: 7 * 24 * 3600,
+          needsProfile: false,
+        },
+        origin,
+      );
+    }
+
+    if (path === "/admin/inventory/sync-google-sheet" && method === "POST") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      if (!isGoogleSheetsSyncEnabled()) {
+        return json(
+          503,
+          {
+            error:
+              "Google Sheets sync is not configured (set spreadsheet ID and secret ARN on the API).",
+          },
+          origin,
+        );
+      }
+      const items = await repo.listItems();
+      const requests = await repo.listAllRequests();
+      const withStock = await Promise.all(
+        items.map(async (it) => {
+          const onHand = await repo.getStock(it.id);
+          const projected = projectedQtyForItem(it.id, requests);
+          return { ...it, onHand, projected };
+        }),
+      );
+      const sorted = sortItemsByPriority(withStock);
+      const values: (string | number)[][] = sorted.map((it) => {
+        const price =
+          it.price != null && Number.isFinite(it.price) ? it.price : "";
+        return [
+          it.id,
+          itemDisplayNameForExport(it.name, it.category),
+          it.category,
+          price,
+          it.onHand,
+          inventoryWebStatusLabel(it.onHand),
+          it.notes ?? "",
+          it.targetQty,
+          it.projected,
+        ];
+      });
+      try {
+        await clearAndWriteInventoryRows(values);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        const hint403 =
+          /403|PERMISSION_DENIED/i.test(msg)
+            ? " Fix: In Google Sheets open this exact file (same ID as GOOGLE_SHEETS_SPREADSHEET_ID in Lambda) → Share → add the service account `client_email` from Secrets Manager JSON as Editor. If the bottom tab is not named “Inventory Tracker”, set parameter GoogleSheetsTabName (e.g. Sheet1) and redeploy."
+            : "";
+        return json(502, { error: `${msg}${hint403}` }, origin);
+      }
+      return json(200, { ok: true, rowCount: values.length }, origin);
+    }
+
     /* ---------- inventory summary ---------- */
     if (path === "/inventory" && method === "GET") {
       const items = await repo.listItems();
@@ -187,6 +348,7 @@ export async function handleRequest(
         name: z.string().min(1),
         category: z.string().optional(),
         targetQty: z.number().int().nonnegative(),
+        price: z.number().finite().nonnegative().optional(),
         notes: z.string().optional(),
         sortPriority: z.number().int().optional(),
       });
@@ -198,6 +360,7 @@ export async function handleRequest(
         name: p.name,
         category: p.category ?? "",
         targetQty: p.targetQty,
+        price: p.price,
         notes: p.notes,
         sortPriority: p.sortPriority ?? 0,
         createdAt: now,
@@ -206,6 +369,68 @@ export async function handleRequest(
       await repo.putItem(entity);
       await repo.setStock(id, 0);
       return json(201, entity, origin);
+    }
+
+    if (path === "/admin/items/import" && method === "POST") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      const body = JSON.parse(event.body || "{}");
+      const itemRow = z.object({
+        itemId: z.string().uuid().optional(),
+        name: z.string().min(1).max(500),
+        category: z.string().max(200).optional(),
+        price: z.number().finite().nonnegative().optional(),
+        targetQty: z.number().int().nonnegative(),
+        onHand: z.number().int().nonnegative(),
+        notes: z.string().max(2000).optional(),
+        sortPriority: z.number().int().optional(),
+      });
+      const p = z
+        .object({ items: z.array(itemRow).min(1).max(500) })
+        .parse(body);
+      let created = 0;
+      let updated = 0;
+      const now = new Date().toISOString();
+      for (let i = 0; i < p.items.length; i++) {
+        const row = p.items[i];
+        const existing =
+          row.itemId != null ? await repo.getItem(row.itemId) : null;
+        if (existing) {
+          const entity: ItemEntity = {
+            ...existing,
+            name: row.name.trim(),
+            category: row.category?.trim() ?? "",
+            targetQty: row.targetQty,
+            price:
+              row.price !== undefined ? row.price : existing.price,
+            notes:
+              row.notes !== undefined
+                ? row.notes.trim() || undefined
+                : existing.notes,
+            sortPriority: row.sortPriority ?? existing.sortPriority,
+            updatedAt: now,
+          };
+          await repo.putItem(entity);
+          await repo.setStock(existing.id, row.onHand);
+          updated++;
+        } else {
+          const id = randomUUID();
+          const entity: ItemEntity = {
+            id,
+            name: row.name.trim(),
+            category: row.category?.trim() ?? "",
+            targetQty: row.targetQty,
+            price: row.price,
+            notes: row.notes?.trim(),
+            sortPriority: row.sortPriority ?? i,
+            createdAt: now,
+            updatedAt: now,
+          };
+          await repo.putItem(entity);
+          await repo.setStock(id, row.onHand);
+          created++;
+        }
+      }
+      return json(200, { created, updated, total: created + updated }, origin);
     }
 
     const itemIdMatch = path.match(/^\/items\/([^/]+)$/);
@@ -219,6 +444,7 @@ export async function handleRequest(
         name: z.string().optional(),
         category: z.string().optional(),
         targetQty: z.number().int().nonnegative().optional(),
+        price: z.number().finite().nonnegative().optional(),
         notes: z.string().optional(),
         sortPriority: z.number().int().optional(),
       });
@@ -255,6 +481,22 @@ export async function handleRequest(
       return json(200, { requests: mine }, origin);
     }
 
+    /** Other contributors’ requests (no email / userId); read-only for non-admins on the home page. */
+    if (path === "/community-requests" && method === "GET") {
+      const all = await repo.listAllRequests();
+      const others = all
+        .filter((r) => r.userId !== user.sub)
+        .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+      const requests = others.map((r) => ({
+        id: r.id,
+        userName: r.userName,
+        status: r.status,
+        lines: r.lines,
+        createdAt: r.createdAt,
+      }));
+      return json(200, { requests }, origin);
+    }
+
     if (path === "/admin/requests" && method === "GET") {
       if (!admin) return json(403, { error: "Admin only" }, origin);
       const all = await repo.listAllRequests();
@@ -262,11 +504,21 @@ export async function handleRequest(
     }
 
     if (path === "/requests" && method === "POST") {
+      const prof = await repo.getUserProfile(user.sub);
+      if (!prof?.firstName?.trim() || !prof?.lastName?.trim()) {
+        return json(
+          403,
+          { error: "Complete your profile before submitting a request" },
+          origin,
+        );
+      }
       const body = JSON.parse(event.body || "{}");
       const p = z.object({ lines: z.array(lineSchema).min(1) }).parse(body);
+      const userName =
+        `${prof.firstName.trim()} ${prof.lastName.trim()}`;
       const r = newRequest({
         userId: user.sub,
-        userName: user.name ?? user.email ?? "Contributor",
+        userName,
         userEmail: user.email,
         lines: p.lines,
       });
@@ -290,15 +542,25 @@ export async function handleRequest(
         return json(403, { error: "Forbidden" }, origin);
       }
       const updated = mergeRequestUpdate(existing, p.lines, user.sub, admin);
-      await repo.putRequest(updated);
+      let toSave = updated;
+      if (!admin) {
+        const prof = await repo.getUserProfile(user.sub);
+        if (prof?.firstName?.trim() && prof?.lastName?.trim()) {
+          toSave = {
+            ...updated,
+            userName: `${prof.firstName.trim()} ${prof.lastName.trim()}`,
+          };
+        }
+      }
+      await repo.putRequest(toSave);
       if (!admin) {
         await notifyAdminRequest({
-          contributorName: updated.userName,
-          contributorEmail: updated.userEmail,
-          summary: `Updated request: ${summarizeLines(updated.lines)}`,
+          contributorName: toSave.userName,
+          contributorEmail: toSave.userEmail,
+          summary: `Updated request: ${summarizeLines(toSave.lines)}`,
         });
       }
-      return json(200, updated, origin);
+      return json(200, toSave, origin);
     }
 
     if (reqMatch && method === "DELETE") {
@@ -384,12 +646,22 @@ export async function handleRequest(
       const items = await repo.listItems();
       const requests = await repo.listAllRequests();
       const lines = [
-        "itemId,name,category,targetQty,onHand,projected",
+        "itemId,name,category,price,targetQty,onHand,projected",
         ...(await Promise.all(
           items.map(async (it) => {
             const onHand = await repo.getStock(it.id);
             const projected = projectedQtyForItem(it.id, requests);
-            return [it.id, csvEscape(it.name), csvEscape(it.category), it.targetQty, onHand, projected].join(",");
+            const price =
+              it.price != null && Number.isFinite(it.price) ? it.price : "";
+            return [
+              it.id,
+              csvEscape(it.name),
+              csvEscape(it.category),
+              price,
+              it.targetQty,
+              onHand,
+              projected,
+            ].join(",");
           }),
         )),
       ];

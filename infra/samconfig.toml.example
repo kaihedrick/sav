@@ -6,8 +6,12 @@ resolve_s3 = true
 region = "us-west-2"
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = [
-  "AdminEmail=savannah@example.com",
+  "AdminEmail=rewindtothehd@gmail.com",
   "AppBaseUrl=http://localhost:5173",
   "GoogleClientId=your-id.apps.googleusercontent.com",
-  "ResendApiKey="
+  "ResendApiKey=",
+  "GoogleSheetsSpreadsheetId=",
+  "GoogleSheetsSecretArn=",
+  "GoogleSheetsSecretName=",
+  "GoogleSheetsTabName=Inventory Tracker"
 ]

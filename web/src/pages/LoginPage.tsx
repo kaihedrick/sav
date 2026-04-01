@@ -22,53 +22,29 @@ export function LoginPage() {
 
   return (
     <Layout showNav={false}>
-      <div className="mx-auto mt-12 max-w-md rounded-3xl border border-pink-200 bg-white/90 p-8 shadow-lg backdrop-blur">
+      <div className="mx-auto mt-12 max-w-md rounded-3xl border border-pink-200/90 bg-white/92 p-8 shadow-lg shadow-pink-900/10 backdrop-blur">
         <h1 className="text-center text-2xl font-bold text-bob-pink">
           Bags of Blessings
         </h1>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-bob-muted">
           Sign in with Google to view needs and share what you can bring.
         </p>
         {!ready && (
-          <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-            Set <code className="text-xs">VITE_GOOGLE_CLIENT_ID</code> and{" "}
-            <code className="text-xs">VITE_API_URL</code> in{" "}
-            <code className="text-xs">web/.env</code>.
-          </p>
-        )}
-        {ready && import.meta.env.DEV && (
-          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50/90 p-3 text-xs text-amber-950">
-            <span className="font-semibold">Google “no registered origin”?</span> In{" "}
-            <a
-              className="text-bob-blue underline"
-              href="https://console.cloud.google.com/apis/credentials"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Google Cloud → Credentials
-            </a>
-            , open your <strong>Web application</strong> OAuth client (this ID) and add{" "}
-            <strong>Authorized JavaScript origins</strong> — paste exactly:
-            <br />
-            <code className="mt-1 block break-all rounded bg-white/80 px-2 py-1 font-mono text-[11px] text-gray-900">
-              {typeof window !== "undefined" ? window.location.origin : ""}
-            </code>
-            <span className="mt-1 block text-[11px] text-amber-900/90">
-              Register <strong>both</strong>{" "}
-              <code className="text-xs">http://localhost:5173</code> and{" "}
-              <code className="text-xs">http://127.0.0.1:5173</code> if you switch URLs. Use Chrome/Edge
-              at that URL — Cursor’s embedded / Simple Browser often uses an origin Google does not
-              allow.
-            </span>
+          <p className="mt-4 rounded-xl border border-pink-200 bg-pink-50/80 p-3 text-sm text-bob-ink">
+            Set <code className="rounded bg-white/90 px-1 text-xs text-bob-pink">VITE_GOOGLE_CLIENT_ID</code>{" "}
+            and{" "}
+            <code className="rounded bg-white/90 px-1 text-xs text-bob-pink">VITE_API_URL</code> in{" "}
+            <code className="rounded bg-white/90 px-1 text-xs">web/.env</code>.
           </p>
         )}
         {apiAuthError && (
-          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-            <span className="font-semibold">Server sign-in error:</span> {apiAuthError}
-            <span className="mt-1 block text-xs text-red-800/90">
-              If this says <code className="text-[11px]">Missing bearer token</code>, redeploy the API (
-              <code className="text-[11px]">sam deploy</code>) so <code className="text-[11px]">/auth/google</code>{" "}
-              is live. Other messages usually mean Lambda{" "}
+          <p className="mt-4 rounded-xl border border-pink-300/80 bg-pink-50/90 p-3 text-sm text-bob-ink">
+            <span className="font-semibold text-bob-rose">Server sign-in error:</span>{" "}
+            {apiAuthError}
+            <span className="mt-1 block text-xs text-bob-muted">
+              If this says <code className="text-[11px] text-bob-ink">Missing bearer token</code>, redeploy
+              the API (<code className="text-[11px]">sam deploy</code>) so{" "}
+              <code className="text-[11px]">/auth/google</code> is live. Other messages usually mean Lambda{" "}
               <code className="text-[11px]">GOOGLE_CLIENT_ID</code> must match this Web client ID or the
               session secret env is wrong.
             </span>
@@ -101,13 +77,29 @@ export function LoginPage() {
                   setApiAuthError(`${res.status}: ${detail}`);
                   return;
                 }
-                const data = JSON.parse(raw) as { accessToken: string };
+                const data = JSON.parse(raw) as {
+                  accessToken: string;
+                  needsProfile?: boolean;
+                  prefillFirstName?: string;
+                  prefillLastName?: string;
+                };
                 setTokens(data.accessToken, "");
-                nav(from, { replace: true });
+                if (data.needsProfile) {
+                  nav("/complete-profile", {
+                    replace: true,
+                    state: {
+                      from,
+                      prefillFirstName: data.prefillFirstName ?? "",
+                      prefillLastName: data.prefillLastName ?? "",
+                    },
+                  });
+                } else {
+                  nav(from, { replace: true });
+                }
               }}
               onError={() => alert("Google sign-in was cancelled or failed.")}
               useOneTap={false}
-              theme="filled_blue"
+              theme="filled_black"
               size="large"
               text="continue_with"
               shape="pill"

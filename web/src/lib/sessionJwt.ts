@@ -22,10 +22,15 @@ export function decodeJwtPayload(token: string): Record<string, unknown> {
   return JSON.parse(json) as Record<string, unknown>;
 }
 
+/** `adminEmail` may be comma/semicolon-separated (same idea as Lambda `ADMIN_EMAIL`). */
 export function isAdminFromToken(token: string, adminEmail?: string): boolean {
   const pl = decodeJwtPayload(token);
   if (pl.role === "admin") return true;
-  const email = String(pl.email ?? "").toLowerCase();
-  if (adminEmail && email === adminEmail.toLowerCase()) return true;
-  return false;
+  const email = String(pl.email ?? "").toLowerCase().trim();
+  if (!email || !adminEmail?.trim()) return false;
+  const admins = adminEmail
+    .split(/[,;]/)
+    .map((e) => e.toLowerCase().trim())
+    .filter(Boolean);
+  return admins.includes(email);
 }

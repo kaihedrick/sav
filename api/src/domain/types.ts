@@ -21,8 +21,20 @@ export interface ItemEntity {
   name: string;
   category: string;
   targetQty: number;
+  /** Optional reference / budget line (Excel “Price” column). */
+  price?: number;
   notes?: string;
   sortPriority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Stored at sk USER#{sub} */
+export interface UserProfile {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
   createdAt: string;
   updatedAt: string;
 }

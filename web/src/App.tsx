@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { RequireAuth } from "./components/RequireAuth";
+import { ProfileGate } from "./components/ProfileGate";
 import { LoginPage } from "./pages/LoginPage";
+import { CompleteProfilePage } from "./pages/CompleteProfilePage";
 import { HomePage } from "./pages/HomePage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminRequestsPage } from "./pages/AdminRequestsPage";
@@ -24,10 +26,20 @@ export function App() {
       <Route path="/auth/callback" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route
+        path="/complete-profile"
+        element={
+          <RequireAuth>
+            <CompleteProfilePage />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/"
         element={
           <RequireAuth>
-            <HomePage />
+            <ProfileGate>
+              <HomePage />
+            </ProfileGate>
           </RequireAuth>
         }
       />
@@ -35,9 +47,11 @@ export function App() {
         path="/admin"
         element={
           <RequireAuth>
-            <RequireAdmin>
-              <AdminDashboard />
-            </RequireAdmin>
+            <ProfileGate>
+              <RequireAdmin>
+                <AdminDashboard />
+              </RequireAdmin>
+            </ProfileGate>
           </RequireAuth>
         }
       />
@@ -45,9 +59,11 @@ export function App() {
         path="/admin/requests"
         element={
           <RequireAuth>
-            <RequireAdmin>
-              <AdminRequestsPage />
-            </RequireAdmin>
+            <ProfileGate>
+              <RequireAdmin>
+                <AdminRequestsPage />
+              </RequireAdmin>
+            </ProfileGate>
           </RequireAuth>
         }
       />

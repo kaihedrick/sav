@@ -7,7 +7,9 @@ html {
 }
 
 body {
-  @apply min-h-screen text-gray-900 antialiased;
+  @apply min-h-screen bg-transparent antialiased;
+  /* Same as tailwind theme colors.bob.ink — avoid theme() here (PostCSS/Vite can miss nested extend) */
+  color: #0c0c0c;
 }
 
 /* DecorativeBackground — rise + 3D tilt (disabled when .deco-reduced is set) */

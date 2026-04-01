@@ -6,7 +6,12 @@ import {
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import type { ItemEntity, ContributionRequest, RequestStatus } from "../domain/types.js";
+import type {
+  ItemEntity,
+  ContributionRequest,
+  RequestStatus,
+  UserProfile,
+} from "../domain/types.js";
 import { ORG } from "../domain/requestService.js";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -155,8 +160,76 @@ export async function listRequestsByUser(userId: string): Promise<ContributionRe
   return all.filter((r) => r.userId === userId);
 }
 
-function entityAttrs(e: ItemEntity) {
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const out = await client.send(
+    new GetCommand({
+      TableName: tableName(),
+      Key: { pk: PK, sk: `USER#${userId}` },
+    }),
+  );
+  if (!out.Item || String(out.Item.entityType ?? "") !== "USER_PROFILE") {
+    return null;
+  }
+  return userProfileFromAttrs(out.Item as Record<string, unknown>);
+}
+
+export async function putUserProfile(input: {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}): Promise<UserProfile> {
+  const existing = await getUserProfile(input.userId);
+  const now = new Date().toISOString();
+  const createdAt = existing?.createdAt ?? now;
+  const profile: UserProfile = {
+    userId: input.userId,
+    email: input.email.trim(),
+    firstName: input.firstName.trim(),
+    lastName: input.lastName.trim(),
+    createdAt,
+    updatedAt: now,
+  };
+  await client.send(
+    new PutCommand({
+      TableName: tableName(),
+      Item: {
+        pk: PK,
+        sk: `USER#${input.userId}`,
+        gsi1pk: "USER_PROFILE",
+        gsi1sk: profile.email.toLowerCase(),
+        entityType: "USER_PROFILE",
+        ...userProfileAttrs(profile),
+      },
+    }),
+  );
+  return profile;
+}
+
+function userProfileAttrs(p: UserProfile) {
   return {
+    userId: p.userId,
+    email: p.email,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+}
+
+function userProfileFromAttrs(raw: Record<string, unknown>): UserProfile {
+  return {
+    userId: String(raw.userId),
+    email: String(raw.email ?? ""),
+    firstName: String(raw.firstName ?? ""),
+    lastName: String(raw.lastName ?? ""),
+    createdAt: String(raw.createdAt ?? ""),
+    updatedAt: String(raw.updatedAt ?? ""),
+  };
+}
+
+function entityAttrs(e: ItemEntity) {
+  const out: Record<string, unknown> = {
     id: e.id,
     name: e.name,
     category: e.category,
@@ -166,14 +239,25 @@ function entityAttrs(e: ItemEntity) {
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
   };
+  if (e.price != null && Number.isFinite(e.price)) {
+    out.price = e.price;
+  }
+  return out;
 }
 
 function itemFromAttrs(raw: Record<string, unknown>): ItemEntity {
+  const priceRaw = raw.price;
+  let price: number | undefined;
+  if (priceRaw != null && priceRaw !== "") {
+    const n = Number(priceRaw);
+    if (Number.isFinite(n)) price = n;
+  }
   return {
     id: String(raw.id),
     name: String(raw.name),
     category: String(raw.category ?? ""),
     targetQty: Number(raw.targetQty ?? 0),
+    price,
     notes: raw.notes ? String(raw.notes) : undefined,
     sortPriority: Number(raw.sortPriority ?? 0),
     createdAt: String(raw.createdAt),

@@ -8,7 +8,10 @@ Parameters:
     Description: Google OAuth Web client ID (same as VITE_GOOGLE_CLIENT_ID) — used to verify Google ID tokens
   AdminEmail:
     Type: String
-    Description: Admin email (Resend To + API admin role)
+    Description: >
+      Admin email(s) for API role and Resend; comma-separated allowed.
+      Must match the Google account email (case-insensitive). After changing,
+      redeploy and sign out/in so the JWT gets role admin.
   AppBaseUrl:
     Type: String
     Default: http://localhost:5173
@@ -16,10 +19,42 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
+  GoogleSheetsSpreadsheetId:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. Google Sheet ID from the document URL (e.g. 1ml2hBI7knLmdSe7xwblPJM-x_GrGK8PoYAqlQ5r-26Q).
+      Share the sheet with the service account email as Editor. Leave empty to disable sync.
+  GoogleSheetsSecretArn:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. Full Secrets Manager ARN for the Google service account JSON. Use this OR
+      GoogleSheetsSecretName (not both required; ARN wins for IAM if set).
+  GoogleSheetsSecretName:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. Secrets Manager secret name (e.g. sav) whose SecretString is the full Google
+      service account JSON. IAM uses a wildcard ARN for this name. Set when you do not pass
+      GoogleSheetsSecretArn.
+  GoogleSheetsTabName:
+    Type: String
+    Default: "Inventory Tracker"
+    Description: Worksheet tab name where row 1 is headers and data starts at A2.
 
 Conditions:
   HasResend: !Not [!Equals [!Ref ResendApiKey, ""]]
   CorsIncludeLocalDev: !Not [!Equals [!Ref AppBaseUrl, "http://localhost:5173"]]
+  HasGoogleSheetsSheetId: !Not [!Equals [!Ref GoogleSheetsSpreadsheetId, ""]]
+  HasGoogleSheetsSecretArn: !Not [!Equals [!Ref GoogleSheetsSecretArn, ""]]
+  HasGoogleSheetsSecretName: !Not [!Equals [!Ref GoogleSheetsSecretName, ""]]
+  HasGoogleSheetsSecret: !Or
+    - !Condition HasGoogleSheetsSecretArn
+    - !Condition HasGoogleSheetsSecretName
+  HasGoogleSheets: !And
+    - !Condition HasGoogleSheetsSheetId
+    - !Condition HasGoogleSheetsSecret
 
 Globals:
   Function:
@@ -108,6 +143,18 @@ Resources:
           APP_BASE_URL: !Ref AppBaseUrl
           RESEND_FROM: "Bags of Blessings <onboarding@resend.dev>"
           RESEND_SECRET_ARN: !If [HasResend, !Ref ResendSecret, "none"]
+          GOOGLE_SHEETS_SPREADSHEET_ID: !If
+            - HasGoogleSheets
+            - !Ref GoogleSheetsSpreadsheetId
+            - ""
+          GOOGLE_SHEETS_SECRET_ARN: !If
+            - HasGoogleSheets
+            - !If
+              - HasGoogleSheetsSecretArn
+              - !Ref GoogleSheetsSecretArn
+              - !Ref GoogleSheetsSecretName
+            - ""
+          GOOGLE_SHEETS_TAB_NAME: !Ref GoogleSheetsTabName
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref AppTable
@@ -121,6 +168,16 @@ Resources:
               - Effect: Allow
                 Action: [secretsmanager:GetSecretValue]
                 Resource: !Ref ResendSecret
+          - !Ref AWS::NoValue
+        - !If
+          - HasGoogleSheets
+          - Statement:
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: !If
+                  - HasGoogleSheetsSecretArn
+                  - !Ref GoogleSheetsSecretArn
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${GoogleSheetsSecretName}-*"
           - !Ref AWS::NoValue
       Events:
         ApiProxy:
@@ -139,6 +196,10 @@ Resources:
 Outputs:
   HttpApiUrl:
     Value: !Sub "${HttpApi.ApiEndpoint}/"
+  PublicInventorySheetHtmlView:
+    Condition: HasGoogleSheets
+    Description: Same Google Sheet link for everyone (read-only htmlview)
+    Value: !Sub "https://docs.google.com/spreadsheets/d/${GoogleSheetsSpreadsheetId}/htmlview"
   TableName:
     Value: !Ref AppTable
   GoogleClientId:
