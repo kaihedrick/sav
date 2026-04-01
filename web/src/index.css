@@ -34,6 +34,22 @@ body {
   }
 }
 
+/* Match header: border-pink-400/35 bg-zinc-950/80 backdrop-blur-md */
+@layer components {
+  .surface-glass {
+    @apply rounded-2xl border border-pink-400/35 bg-zinc-950/80 shadow-md shadow-black/25 backdrop-blur-md;
+  }
+  .surface-glass-modal {
+    @apply rounded-2xl border border-pink-400/35 bg-zinc-950/85 shadow-xl shadow-black/40 backdrop-blur-md;
+  }
+  .surface-glass-auth {
+    @apply rounded-3xl border border-pink-400/35 bg-zinc-950/85 shadow-lg shadow-black/30 backdrop-blur-md;
+  }
+  .surface-glass-btn {
+    @apply rounded-full border border-pink-400/40 bg-zinc-900/55 text-pink-100 shadow-sm backdrop-blur-sm transition-colors hover:bg-zinc-800/70;
+  }
+}
+
 /* DecorativeBackground — rise + 3D tilt (disabled when .deco-reduced is set) */
 .perspective-deco {
   perspective: 1100px;

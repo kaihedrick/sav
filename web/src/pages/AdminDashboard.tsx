@@ -15,6 +15,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   categoryAccent,
+  inventoryGlassCardClass,
   itemEmoji,
   stockLevelFromOnHand,
   stockStatusClasses,
@@ -185,13 +186,13 @@ export function AdminDashboard() {
         </Link>
       </div>
 
-      <section className="rounded-2xl border border-pink-200/80 bg-white/95 p-4 shadow-sm shadow-pink-900/5 md:p-6">
-        <h2 className="flex items-center gap-2 font-semibold text-bob-pink">
-          <i className="fa-solid fa-plus text-bob-pink/80" aria-hidden />
+      <section className="surface-glass p-4 md:p-6">
+        <h2 className="flex items-center gap-2 font-semibold text-pink-100">
+          <i className="fa-solid fa-plus text-pink-300/90" aria-hidden />
           Add item
         </h2>
-        <p className="mt-2 max-w-2xl text-xs text-bob-muted">
-          <strong className="font-medium text-bob-ink">Target</strong> is how many
+        <p className="mt-2 max-w-2xl text-xs text-pink-200/85">
+          <strong className="font-medium text-pink-50">Target</strong> is how many
           units you want for this item in the drive. The public list sorts by how
           far below that goal you still are (using on-hand stock and pending
           requests).
@@ -274,7 +275,7 @@ export function AdminDashboard() {
             <button
               type="button"
               disabled={importExcel.isPending}
-              className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50 disabled:opacity-50"
+              className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
               onClick={() => excelInputRef.current?.click()}
             >
               <i
@@ -289,7 +290,7 @@ export function AdminDashboard() {
                   href={liveSheet.data.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
+                  className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
                 >
                   <i className="fa-solid fa-up-right-from-square text-xs" aria-hidden />
                   Open live sheet
@@ -297,7 +298,7 @@ export function AdminDashboard() {
                 <button
                   type="button"
                   disabled={syncGoogleSheet.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50 disabled:opacity-50"
+                  className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                   onClick={() => syncGoogleSheet.mutate()}
                 >
                   <i
@@ -312,7 +313,7 @@ export function AdminDashboard() {
             ) : null}
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
+              className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
               onClick={() => void downloadExcel()}
             >
               <i className="fa-solid fa-file-export text-xs" aria-hidden />
@@ -320,7 +321,7 @@ export function AdminDashboard() {
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-full border border-pink-300/80 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
+              className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
               onClick={() => void copyInventoryTsv()}
             >
               <i className="fa-solid fa-copy text-xs" aria-hidden />
@@ -335,7 +336,7 @@ export function AdminDashboard() {
           <p className="mb-2 text-sm text-pink-100">{importMsg}</p>
         )}
         {importErr && (
-          <p className="mb-2 text-sm text-bob-rose">{importErr}</p>
+          <p className="mb-2 text-sm text-red-300">{importErr}</p>
         )}
         <div className="space-y-3">
           {items.map((it) => (
@@ -381,42 +382,42 @@ function AdminInventoryCard({
           focusStock();
         }
       }}
-      className={`relative cursor-pointer rounded-2xl border border-pink-200/50 border-l-4 ${accent.borderL} ${accent.panelBg} p-4 pr-10 text-left shadow-sm shadow-pink-900/5 ring-1 transition hover:ring-2 hover:ring-pink-300/50 ${accent.ring}`}
+      className={inventoryGlassCardClass(accent)}
     >
       <span
-        className="pointer-events-none absolute right-3 top-3 text-bob-pink/45"
+        className="pointer-events-none absolute right-3 top-3 text-pink-300/50"
         aria-hidden
       >
         <i className="fa-solid fa-pen-to-square text-lg" />
       </span>
       <div className="flex flex-wrap items-start gap-3">
         <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/90 text-2xl shadow-sm"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-2xl shadow-sm"
           aria-hidden
         >
           {emoji}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold text-bob-ink">{it.name}</h2>
+            <h2 className="font-semibold text-pink-50">{it.name}</h2>
             {(it.category || "").trim() ? (
               <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${accent.pill}`}
+                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${accent.pillGlass}`}
               >
                 {it.category}
               </span>
             ) : null}
           </div>
           {it.price != null && Number.isFinite(it.price) ? (
-            <p className="mt-0.5 text-xs text-bob-muted">
+            <p className="mt-0.5 text-xs text-pink-200/75">
               <i className="fa-solid fa-tag mr-1 opacity-70" aria-hidden />
               ${it.price}
             </p>
           ) : null}
-          <p className={`mt-1 text-sm ${status.textClass}`}>{status.label}</p>
+          <p className={`mt-1 text-sm ${status.textClassDark}`}>{status.label}</p>
           <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             <div>
-              <dt className="text-bob-muted">
+              <dt className="text-pink-200/65">
                 <span className="inline-flex items-center gap-1">
                   <i
                     className="fa-solid fa-bullseye text-[0.7rem] opacity-70"
@@ -432,7 +433,7 @@ function AdminInventoryCard({
                   step={1}
                   key={`${it.id}-tgt-${it.targetQty}`}
                   defaultValue={it.targetQty}
-                  className="w-full min-w-0 max-w-[7rem] rounded-lg border border-white/80 bg-white/95 px-2 py-1 font-medium text-bob-ink shadow-sm focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
+                  className="w-full min-w-0 max-w-[7rem] rounded-lg border border-white/20 bg-black/25 px-2 py-1 font-medium text-pink-50 shadow-sm backdrop-blur-sm focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-400/40"
                   aria-label={`Target goal for ${it.name}`}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
@@ -453,7 +454,7 @@ function AdminInventoryCard({
               </dd>
             </div>
             <div>
-              <dt className="text-bob-muted">
+              <dt className="text-pink-200/65">
                 <span className="inline-flex items-center gap-1">
                   <i
                     className="fa-solid fa-warehouse text-[0.7rem] opacity-70"
@@ -470,12 +471,12 @@ function AdminInventoryCard({
                   step={1}
                   key={`${it.id}-${it.onHand}`}
                   defaultValue={it.onHand}
-                  className={`w-full min-w-0 max-w-[7rem] rounded-lg border border-white/80 bg-white/95 px-2 py-1 font-medium shadow-sm focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200 ${
+                  className={`w-full min-w-0 max-w-[7rem] rounded-lg border border-white/20 bg-black/25 px-2 py-1 font-medium shadow-sm backdrop-blur-sm focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-400/40 ${
                     level === "out"
-                      ? "text-red-600"
+                      ? "text-red-400"
                       : level === "low"
-                        ? "text-amber-600"
-                        : "text-emerald-700"
+                        ? "text-amber-300"
+                        : "text-emerald-300"
                   }`}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
@@ -496,7 +497,7 @@ function AdminInventoryCard({
               </dd>
             </div>
             <div>
-              <dt className="text-bob-muted">
+              <dt className="text-pink-200/65">
                 <span className="inline-flex items-center gap-1">
                   <i
                     className="fa-solid fa-chart-line text-[0.7rem] opacity-70"
@@ -505,7 +506,7 @@ function AdminInventoryCard({
                   Projected
                 </span>
               </dt>
-              <dd className="mt-0.5 font-medium text-bob-pink">{it.projected}</dd>
+              <dd className="mt-0.5 font-medium text-pink-300">{it.projected}</dd>
             </div>
           </dl>
         </div>

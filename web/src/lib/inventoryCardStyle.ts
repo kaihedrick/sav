@@ -12,22 +12,27 @@ export function stockLevelFromOnHand(onHand: number): StockLevel {
 export function stockStatusClasses(level: StockLevel): {
   label: string;
   textClass: string;
+  /** For dark glass panels (navbar-style cards). */
+  textClassDark: string;
 } {
   switch (level) {
     case "out":
       return {
         label: "Out of stock",
         textClass: "font-semibold text-red-600",
+        textClassDark: "font-semibold text-red-400",
       };
     case "low":
       return {
         label: "Low stock",
         textClass: "font-semibold text-amber-600",
+        textClassDark: "font-semibold text-amber-300",
       };
     default:
       return {
         label: "In stock",
         textClass: "font-semibold text-emerald-700",
+        textClassDark: "font-semibold text-emerald-300",
       };
   }
 }
@@ -77,36 +82,42 @@ const CATEGORY_PALETTE = [
     ring: "ring-pink-200/60",
     panelBg: "bg-gradient-to-br from-pink-50/95 to-white/95",
     pill: "bg-pink-100 text-pink-900",
+    pillGlass: "border border-pink-400/30 bg-pink-500/15 text-pink-100",
   },
   {
     borderL: "border-l-violet-500",
     ring: "ring-violet-200/60",
     panelBg: "bg-gradient-to-br from-violet-50/95 to-white/95",
     pill: "bg-violet-100 text-violet-900",
+    pillGlass: "border border-violet-400/30 bg-violet-500/15 text-violet-100",
   },
   {
     borderL: "border-l-sky-500",
     ring: "ring-sky-200/60",
     panelBg: "bg-gradient-to-br from-sky-50/95 to-white/95",
     pill: "bg-sky-100 text-sky-900",
+    pillGlass: "border border-sky-400/30 bg-sky-500/15 text-sky-100",
   },
   {
     borderL: "border-l-amber-500",
     ring: "ring-amber-200/60",
     panelBg: "bg-gradient-to-br from-amber-50/95 to-white/95",
     pill: "bg-amber-100 text-amber-900",
+    pillGlass: "border border-amber-400/30 bg-amber-500/15 text-amber-100",
   },
   {
     borderL: "border-l-emerald-500",
     ring: "ring-emerald-200/60",
     panelBg: "bg-gradient-to-br from-emerald-50/95 to-white/95",
     pill: "bg-emerald-100 text-emerald-900",
+    pillGlass: "border border-emerald-400/30 bg-emerald-500/15 text-emerald-100",
   },
   {
     borderL: "border-l-orange-500",
     ring: "ring-orange-200/60",
     panelBg: "bg-gradient-to-br from-orange-50/95 to-white/95",
     pill: "bg-orange-100 text-orange-900",
+    pillGlass: "border border-orange-400/30 bg-orange-500/15 text-orange-100",
   },
 ] as const;
 
@@ -161,6 +172,11 @@ export function categoryExcelTagStyle(category: string): {
 /** Stable accent colors per category string. */
 export function categoryAccent(category: string) {
   return CATEGORY_PALETTE[categoryPaletteIndex(category)]!;
+}
+
+/** Shell classes matching the app nav: zinc glass + colored left edge. */
+export function inventoryGlassCardClass(accent: (typeof CATEGORY_PALETTE)[number]): string {
+  return `relative cursor-pointer rounded-2xl border border-pink-400/35 border-l-4 ${accent.borderL} bg-zinc-950/80 p-4 pr-10 text-left shadow-md shadow-black/25 backdrop-blur-md ring-1 ring-pink-400/20 transition hover:ring-2 hover:ring-pink-400/40`;
 }
 
 /** Emoji from item name + category (no extra dependencies). */

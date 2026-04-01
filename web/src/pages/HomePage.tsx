@@ -6,6 +6,7 @@ import { getIdToken } from "../lib/tokens";
 import { isAdminFromToken } from "../lib/sessionJwt";
 import {
   categoryAccent,
+  inventoryGlassCardClass,
   itemEmoji,
   stockLevelFromOnHand,
   stockStatusClasses,
@@ -167,7 +168,7 @@ export function HomePage() {
           </p>
         )}
         {inv.error && (
-          <p className="rounded-xl border border-pink-200 bg-pink-50/90 px-3 py-2 text-sm text-bob-rose">
+          <p className="rounded-xl border border-rose-400/40 bg-rose-950/50 px-3 py-2 text-sm text-red-200 backdrop-blur-sm">
             {(inv.error as Error).message}
           </p>
         )}
@@ -188,47 +189,47 @@ export function HomePage() {
                   setQuickOrderItem(it);
                 }
               }}
-              className={`relative cursor-pointer rounded-2xl border border-pink-200/50 border-l-4 ${accent.borderL} ${accent.panelBg} p-4 pr-10 text-left shadow-sm shadow-pink-900/5 ring-1 transition hover:ring-2 hover:ring-pink-300/50 ${accent.ring}`}
+              className={inventoryGlassCardClass(accent)}
             >
               <span
-                className="pointer-events-none absolute right-3 top-3 text-bob-pink/45"
+                className="pointer-events-none absolute right-3 top-3 text-pink-300/50"
                 aria-hidden
               >
                 <i className="fa-solid fa-circle-plus text-lg" />
               </span>
               <div className="flex flex-wrap items-start gap-3">
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/90 text-2xl shadow-sm"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-2xl shadow-sm"
                   aria-hidden
                 >
                   {emoji}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="font-semibold text-bob-ink">{it.name}</h2>
+                    <h2 className="font-semibold text-pink-50">{it.name}</h2>
                     {(it.category || "").trim() ? (
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${accent.pill}`}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${accent.pillGlass}`}
                       >
                         {it.category}
                       </span>
                     ) : null}
                   </div>
-                  <p className={`mt-1 text-sm ${status.textClass}`}>
+                  <p className={`mt-1 text-sm ${status.textClassDark}`}>
                     {status.label}
                   </p>
                   <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <dt className="text-bob-muted">On hand</dt>
+                      <dt className="text-pink-200/65">On hand</dt>
                       <dd
-                        className={`font-medium ${level === "out" ? "text-red-600" : level === "low" ? "text-amber-600" : "text-emerald-700"}`}
+                        className={`font-medium ${level === "out" ? "text-red-400" : level === "low" ? "text-amber-300" : "text-emerald-300"}`}
                       >
                         {it.onHand}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-bob-muted">Projected</dt>
-                      <dd className="font-medium text-bob-pink">{it.projected}</dd>
+                      <dt className="text-pink-200/65">Projected</dt>
+                      <dd className="font-medium text-pink-300">{it.projected}</dd>
                     </div>
                   </dl>
                 </div>
@@ -248,19 +249,19 @@ export function HomePage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="quick-order-title"
-            className="w-full max-w-md rounded-2xl border border-pink-200 bg-white p-5 shadow-xl shadow-pink-900/20"
+            className="surface-glass-modal w-full max-w-md p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <h2
               id="quick-order-title"
-              className="flex items-center gap-2 text-lg font-semibold text-bob-ink"
+              className="flex items-center gap-2 text-lg font-semibold text-pink-50"
             >
               <i className="fa-solid fa-hand-holding-heart text-bob-pink" aria-hidden />
               {quickOrderItem.name}
             </h2>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-bob-ink">
-                <i className="fa-solid fa-hashtag text-bob-muted" title="Qty" aria-hidden />
+              <label className="flex items-center gap-2 text-pink-100">
+                <i className="fa-solid fa-hashtag text-pink-300/70" title="Qty" aria-hidden />
                 <span className="sr-only">Quantity</span>
                 <input
                   type="number"
@@ -298,11 +299,11 @@ export function HomePage() {
                 icon="fa-xmark"
                 label="Close"
                 onClick={() => setQuickOrderItem(null)}
-                className="h-11 w-11 rounded-full border border-neutral-200 bg-white text-bob-muted hover:bg-neutral-50"
+                className="h-11 w-11 rounded-full border border-pink-400/35 bg-zinc-900/60 text-pink-200/90 backdrop-blur-sm hover:bg-zinc-800/70"
               />
             </div>
             {quickCommit.isError && (
-              <p className="mt-3 text-sm text-bob-rose">
+              <p className="mt-3 text-sm text-red-300">
                 {(quickCommit.error as Error).message}
               </p>
             )}
@@ -310,8 +311,8 @@ export function HomePage() {
         </div>
       )}
 
-      <section className="mt-10 rounded-2xl border border-pink-200/80 bg-white/95 p-4 shadow-sm shadow-pink-900/5 md:p-6">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-bob-pink">
+      <section className="surface-glass mt-10 p-4 md:p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-pink-100">
           <i className="fa-solid fa-pen-to-square" aria-hidden />
           New request
         </h2>
@@ -355,7 +356,7 @@ export function HomePage() {
                 <IconButton
                   icon="fa-trash"
                   label="Remove line"
-                  className="h-10 w-10 rounded-lg text-bob-rose hover:bg-pink-50"
+                  className="h-10 w-10 rounded-lg border border-rose-400/35 bg-rose-950/35 text-rose-200 backdrop-blur-sm hover:bg-rose-900/45"
                   onClick={() => setLines(lines.filter((_, i) => i !== idx))}
                 />
               )}
@@ -363,7 +364,7 @@ export function HomePage() {
           ))}
           <button
             type="button"
-            className="inline-flex items-center gap-2 text-sm font-medium text-bob-pink"
+            className="inline-flex items-center gap-2 text-sm font-medium text-pink-300 hover:text-pink-200"
             onClick={() => setLines([...lines, { itemId: "", qty: 1 }])}
           >
             <i className="fa-solid fa-plus" aria-hidden />
@@ -383,7 +384,7 @@ export function HomePage() {
           />
         </div>
         {createReq.isError && (
-          <p className="mt-2 text-sm text-bob-rose">
+          <p className="mt-2 text-sm text-red-300">
             {(createReq.error as Error).message}
           </p>
         )}
@@ -411,7 +412,7 @@ export function HomePage() {
         )}
         <ul className="mt-3 space-y-3">
           {othersList.length === 0 && !community.isLoading && !allForAdmin.isLoading && (
-            <li className="flex items-center gap-2 rounded-2xl border border-pink-200/40 bg-black/20 px-4 py-3 text-sm text-pink-100/90 backdrop-blur-sm">
+            <li className="surface-glass flex items-center gap-2 px-4 py-3 text-sm text-pink-100/90">
               <i className="fa-solid fa-inbox" aria-hidden />
               Empty
             </li>
@@ -419,16 +420,16 @@ export function HomePage() {
           {othersList.map((r) => (
             <li
               key={r.id}
-              className="rounded-2xl border border-pink-200/70 bg-white/90 p-4 shadow-sm shadow-pink-900/5"
+              className="surface-glass p-4"
             >
               <div className="flex flex-wrap justify-between gap-2 text-sm">
-                <span className="font-semibold text-bob-ink">{r.userName}</span>
+                <span className="font-semibold text-pink-50">{r.userName}</span>
                 <span className="font-medium text-bob-pink">{r.status}</span>
               </div>
-              <p className="mt-0.5 text-xs text-bob-muted">
+              <p className="mt-0.5 text-xs text-pink-200/70">
                 {new Date(r.createdAt).toLocaleString()}
               </p>
-              <ul className="mt-2 text-sm text-bob-ink">
+              <ul className="mt-2 text-sm text-pink-100/95">
                 {r.lines.map((l, i) => (
                   <li key={i}>{formatLine(l)}</li>
                 ))}
@@ -438,7 +439,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-xmark"
                     label="Reject"
-                    className="h-9 w-9 rounded-full border border-pink-300/80 bg-pink-50 text-bob-rose hover:bg-pink-100"
+                    className="h-9 w-9 rounded-full border border-rose-400/40 bg-rose-950/40 text-rose-200 backdrop-blur-sm hover:bg-rose-900/50"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "rejected" })
                     }
@@ -454,7 +455,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-ban"
                     label="Not brought"
-                    className="h-9 w-9 rounded-full border border-neutral-300 bg-white text-bob-ink hover:bg-pink-50"
+                    className="surface-glass-btn h-9 w-9 border px-0 text-pink-100"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "not_brought" })
                     }
@@ -475,15 +476,15 @@ export function HomePage() {
           {(mine.data?.requests ?? []).map((r) => (
             <li
               key={r.id}
-              className="rounded-2xl border border-pink-200/70 bg-white/90 p-4 shadow-sm shadow-pink-900/5"
+              className="surface-glass p-4"
             >
               <div className="flex flex-wrap justify-between gap-2 text-sm">
                 <span className="font-medium text-bob-pink">{r.status}</span>
-                <span className="text-bob-muted">
+                <span className="text-pink-200/70">
                   {new Date(r.createdAt).toLocaleString()}
                 </span>
               </div>
-              <ul className="mt-2 text-sm text-bob-ink">
+              <ul className="mt-2 text-sm text-pink-100/95">
                 {r.lines.map((l, i) => (
                   <li key={i}>{formatLine(l)}</li>
                 ))}
@@ -493,7 +494,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-pen"
                     label="Edit quantity"
-                    className="h-9 w-9 rounded-full border border-neutral-200 bg-white text-bob-ink hover:bg-pink-50"
+                    className="surface-glass-btn h-9 w-9 border px-0 text-pink-100"
                     onClick={async () => {
                       const qty = Number(
                         prompt(
@@ -520,7 +521,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-trash"
                     label="Delete request"
-                    className="h-9 w-9 rounded-full border border-pink-300/80 bg-pink-50 text-bob-rose hover:bg-pink-100"
+                    className="h-9 w-9 rounded-full border border-rose-400/40 bg-rose-950/40 text-rose-200 backdrop-blur-sm hover:bg-rose-900/50"
                     onClick={async () => {
                       if (!confirm("Delete this request?")) return;
                       await apiFetch(`/requests/${r.id}`, { method: "DELETE" });

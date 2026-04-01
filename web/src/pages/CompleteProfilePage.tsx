@@ -79,23 +79,23 @@ export function CompleteProfilePage() {
 
   return (
     <Layout showNav={false}>
-      <div className="mx-auto mt-10 max-w-md rounded-3xl border border-pink-200/90 bg-white/95 p-8 shadow-lg shadow-pink-900/10 backdrop-blur">
+      <div className="surface-glass-auth mx-auto mt-10 max-w-md p-8">
         <h1 className="text-center text-xl font-bold text-bob-pink">
           Your name
         </h1>
-        <p className="mt-2 text-center text-sm text-bob-muted">
+        <p className="mt-2 text-center text-sm text-pink-200/85">
           We use this so others can see who signed up to bring each item. This is
           your first sign-in — add your first and last name as you’d like them
           shown.
         </p>
         {me?.email && (
-          <p className="mt-2 text-center text-xs text-bob-muted">
-            Signed in as <span className="text-bob-ink">{me.email}</span>
+          <p className="mt-2 text-center text-xs text-pink-200/70">
+            Signed in as <span className="text-pink-50">{me.email}</span>
           </p>
         )}
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
           <div>
-            <label className="block text-sm font-medium text-bob-ink">
+            <label className="block text-sm font-medium text-pink-100">
               First name
             </label>
             <input
@@ -108,7 +108,7 @@ export function CompleteProfilePage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-bob-ink">
+            <label className="block text-sm font-medium text-pink-100">
               Last name
             </label>
             <input
@@ -121,7 +121,7 @@ export function CompleteProfilePage() {
             />
           </div>
           {err && (
-            <p className="text-sm text-bob-rose">{err}</p>
+            <p className="text-sm text-red-300">{err}</p>
           )}
           <button
             type="submit"

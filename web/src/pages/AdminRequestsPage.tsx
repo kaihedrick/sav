@@ -66,7 +66,7 @@ export function AdminRequestsPage() {
         <p className="mt-4 text-sm text-pink-200/90">Loading…</p>
       )}
       {error && (
-        <p className="mt-4 rounded-xl border border-pink-200 bg-pink-50/90 px-3 py-2 text-sm text-bob-rose">
+        <p className="mt-4 rounded-xl border border-rose-400/40 bg-rose-950/50 px-3 py-2 text-sm text-red-200 backdrop-blur-sm">
           {(error as Error).message}
         </p>
       )}
@@ -75,18 +75,18 @@ export function AdminRequestsPage() {
         {requests.map((r) => (
           <li
             key={r.id}
-            className="rounded-2xl border border-pink-200/80 bg-white/95 p-4 shadow-sm shadow-pink-900/5"
+            className="surface-glass p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="font-semibold text-bob-ink">{r.userName}</p>
-                <p className="text-xs text-bob-muted">
+                <p className="font-semibold text-pink-50">{r.userName}</p>
+                <p className="text-xs text-pink-200/75">
                   {new Date(r.createdAt).toLocaleString()} ·{" "}
                   <span className="font-medium text-bob-pink">{r.status}</span>
                 </p>
               </div>
             </div>
-            <ul className="mt-2 text-sm text-bob-ink">
+            <ul className="mt-2 text-sm text-pink-100/95">
               {r.lines.map((l, i) => (
                 <li key={i}>
                   {l.itemId} × {l.qty}
@@ -98,7 +98,7 @@ export function AdminRequestsPage() {
                 <>
                   <button
                     type="button"
-                    className="rounded-full border border-pink-300/80 bg-pink-50 px-3 py-1.5 text-sm font-medium text-bob-rose"
+                    className="rounded-full border border-rose-400/40 bg-rose-950/45 px-3 py-1.5 text-sm font-medium text-rose-200 backdrop-blur-sm hover:bg-rose-900/55"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "rejected" })
                     }
@@ -116,7 +116,7 @@ export function AdminRequestsPage() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-bob-ink hover:bg-pink-50"
+                    className="surface-glass-btn px-3 py-1.5 text-sm font-medium"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "not_brought" })
                     }
