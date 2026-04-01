@@ -22,21 +22,20 @@ html {
 }
 
 body {
-  @apply font-sans antialiased;
+  font-family: "DM Sans", sans-serif;
+  @apply antialiased;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
   background-color: #030102;
   color: #0c0c0c;
 }
 
-@layer base {
-  h1,
-  h2,
-  h3,
-  h4 {
-    /* Same stack as theme.extend.fontFamily.heading (DM Sans) */
-    @apply font-sans font-semibold tracking-tight;
-  }
+h1,
+h2,
+h3,
+h4,
+.wordmark-title {
+  font-family: "Cormorant Garamond", serif;
 }
 
 #root {
