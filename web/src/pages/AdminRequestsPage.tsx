@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Layout } from "../components/Layout";
 import { apiJson, apiFetch } from "../lib/api";
 import { Link } from "react-router-dom";
@@ -20,6 +21,19 @@ export function AdminRequestsPage() {
     queryFn: () => apiJson<{ requests: RequestRow[] }>("/admin/requests"),
     refetchInterval: 20_000,
   });
+
+  const inv = useQuery({
+    queryKey: ["inventory"],
+    queryFn: () => apiJson<{ items: { id: string; name: string }[] }>("/inventory"),
+  });
+
+  const itemNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const it of inv.data?.items ?? []) {
+      m.set(it.id, it.name);
+    }
+    return m;
+  }, [inv.data?.items]);
 
   const patchStatus = useMutation({
     mutationFn: async ({
@@ -89,7 +103,7 @@ export function AdminRequestsPage() {
             <ul className="mt-2 text-sm text-pink-100/95">
               {r.lines.map((l, i) => (
                 <li key={i}>
-                  {l.itemId} × {l.qty}
+                  {itemNameById.get(l.itemId) ?? "Unknown item"} × {l.qty}
                 </li>
               ))}
             </ul>
