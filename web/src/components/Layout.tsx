@@ -70,7 +70,7 @@ export function Layout({
               <div className="relative mx-auto max-w-3xl overflow-visible px-safe py-3 md:max-w-5xl">
                 <Link
                   to="/"
-                  className="font-brand absolute left-1/2 top-1/2 z-10 inline-block max-w-[min(calc(100%-5.5rem),20rem)] -translate-x-1/2 -translate-y-1/2 break-words text-balance text-center text-[1.25rem] font-light leading-snug tracking-[0.06em] text-pink-100 antialiased transition-colors hover:text-pink-50 max-sm:text-[clamp(1.35rem,5vw,2rem)] max-sm:leading-[1.25] max-sm:tracking-[0.05em] sm:text-xl sm:tracking-[0.08em]"
+                  className="font-brand absolute left-1/2 top-1/2 z-10 inline-block max-w-[min(calc(100%-5.5rem),20rem)] -translate-x-1/2 -translate-y-1/2 break-words text-balance text-center text-[1.25rem] font-normal leading-snug tracking-[0.06em] text-pink-100 antialiased transition-colors hover:text-pink-50 max-sm:text-[clamp(1.35rem,5vw,2rem)] max-sm:leading-[1.25] max-sm:tracking-[0.05em] sm:text-xl sm:tracking-[0.08em]"
                   onClick={() => setMenuOpen(false)}
                 >
                   Bags of Blessings
