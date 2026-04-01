@@ -33,8 +33,9 @@ export function LoginPage() {
           <p className="mt-4 rounded-xl border border-pink-200 bg-pink-50/80 p-3 text-sm text-bob-ink">
             Set <code className="rounded bg-white/90 px-1 text-xs text-bob-pink">VITE_GOOGLE_CLIENT_ID</code>{" "}
             and{" "}
-            <code className="rounded bg-white/90 px-1 text-xs text-bob-pink">VITE_API_URL</code> in{" "}
-            <code className="rounded bg-white/90 px-1 text-xs">web/.env</code>.
+            <code className="rounded bg-white/90 px-1 text-xs text-bob-pink">VITE_API_URL</code>{" "}
+            locally in <code className="rounded bg-white/90 px-1 text-xs">web/.env</code>, or in your host’s
+            environment (e.g. Vercel → Settings → Environment Variables), then rebuild.
           </p>
         )}
         {apiAuthError && (
