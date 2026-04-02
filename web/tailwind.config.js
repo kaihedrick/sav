@@ -13,13 +13,9 @@ export default {
         },
       },
       fontFamily: {
-        /** UI + headings (secondary) */
+        /** App UI + headings; header wordmark uses `.wordmark-title` (system sans stack in CSS) */
         sans: ['"DM Sans"', "system-ui", "Segoe UI", "sans-serif"],
-        /** Wordmark + display serif (primary) */
-        serif: ['"Cormorant Garamond"', "Georgia", "serif"],
-        brand: ['"Cormorant Garamond"', "Georgia", "serif"],
         heading: ['"DM Sans"', "system-ui", "Segoe UI", "sans-serif"],
-        display: ['"Cormorant Garamond"', "Georgia", "serif"],
       },
     },
   },

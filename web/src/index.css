@@ -2,11 +2,6 @@
 @import "@fontsource/dm-sans/500.css";
 @import "@fontsource/dm-sans/600.css";
 @import "@fontsource/dm-sans/700.css";
-@import "@fontsource/cormorant-garamond/300.css";
-@import "@fontsource/cormorant-garamond/400.css";
-@import "@fontsource/cormorant-garamond/500.css";
-@import "@fontsource/cormorant-garamond/600.css";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -48,14 +43,6 @@ body {
   min-height: -webkit-fill-available;
 }
 
-@layer components {
-  /* Wordmark: light Cormorant + stable metrics to reduce swap jump */
-  .wordmark-title {
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-  }
-}
-
 @layer utilities {
   /* Horizontal insets on notched phones (e.g. landscape) */
   .px-safe {
@@ -67,14 +54,12 @@ body {
 /* Match header: border-pink-400/35 bg-zinc-950/80 backdrop-blur-md */
 @layer components {
   /**
-   * Nav chrome: explicit pink-50 + Tailwind’s default sans stack (ui-sans-serif…).
-   * Avoids inheriting body `color: #0c0c0c` on Vercel and matches “good” localhost DevTools.
-   * Wordmark overrides with `.font-brand` + `text-pink-100`.
+   * Nav chrome: light default text only (not body’s #0c0c0c).
+   * Do not set font-family here — it was forcing sans onto the whole header and could make
+   * “Bags of Blessings” match the toolbar instead of Cormorant on some builds.
    */
   .layout-header-chrome {
     color: rgb(253 242 248);
-    font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-      "Segoe UI Symbol", "Noto Color Emoji";
   }
 
   .surface-glass {
@@ -196,4 +181,12 @@ body {
   .deco-static-outline-draw {
     animation-duration: calc(var(--deco-draw-dur, 3.2s) * 2.2) !important;
   }
+}
+
+/* Header wordmark only: system UI sans (the style you preferred vs Cormorant) */
+a.wordmark-title {
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }

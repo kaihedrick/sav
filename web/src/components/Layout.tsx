@@ -70,13 +70,13 @@ export function Layout({
               <div className="relative mx-auto max-w-3xl overflow-visible px-safe py-3 md:max-w-5xl">
                 <Link
                   to="/"
-                  className="font-brand wordmark-title absolute left-1/2 top-1/2 z-10 inline-block max-w-[min(calc(100%-5.5rem),22rem)] -translate-x-1/2 -translate-y-1/2 break-words text-balance text-center text-[clamp(1.55rem,5.75vw,2.45rem)] font-light leading-[1.12] tracking-[0.06em] text-pink-100 antialiased transition-colors hover:text-pink-50 sm:tracking-[0.07em]"
+                  className="wordmark-title absolute left-1/2 top-1/2 z-10 inline-block max-w-[min(calc(100%-5.5rem),22rem)] -translate-x-1/2 -translate-y-1/2 break-words text-balance text-center text-[clamp(1.55rem,5.75vw,2.45rem)] font-light leading-[1.12] tracking-[0.06em] text-pink-100 antialiased transition-colors hover:text-pink-50 sm:tracking-[0.07em]"
                   onClick={() => setMenuOpen(false)}
                 >
                   Bags of Blessings
                 </Link>
 
-                <div className="relative z-20 flex min-h-[44px] w-full items-center justify-end gap-1.5">
+                <div className="relative z-20 flex min-h-[44px] w-full items-center justify-end gap-1.5 font-sans">
                   <button
                     type="button"
                     className="inline-flex h-10 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-pink-500/20 sm:hidden"
