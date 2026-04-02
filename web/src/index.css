@@ -66,6 +66,17 @@ body {
 
 /* Match header: border-pink-400/35 bg-zinc-950/80 backdrop-blur-md */
 @layer components {
+  /**
+   * Nav chrome: explicit pink-50 + Tailwind’s default sans stack (ui-sans-serif…).
+   * Avoids inheriting body `color: #0c0c0c` on Vercel and matches “good” localhost DevTools.
+   * Wordmark overrides with `.font-brand` + `text-pink-100`.
+   */
+  .layout-header-chrome {
+    color: rgb(253 242 248);
+    font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol", "Noto Color Emoji";
+  }
+
   .surface-glass {
     @apply rounded-2xl border border-pink-400/35 bg-zinc-950/80 shadow-md shadow-black/25 backdrop-blur-md;
   }
