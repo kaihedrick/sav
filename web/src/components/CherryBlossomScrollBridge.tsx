@@ -1,31 +1,29 @@
 import { useEffect } from "react";
-
-/** Desktop: 1:1 with scroll. Narrow viewports (e.g. iPhone): slower so the pattern doesn’t race */
-function parallaxFactor(): number {
-  if (typeof window === "undefined") return 1;
-  return window.innerWidth <= 768 ? 0.32 : 1;
-}
+import { notifyCherryPatternAlign } from "../lib/cherryPatternRegistry";
 
 /**
- * One passive listener updates `--cherry-scroll-y` for all {@link CherryBlossomCardBg} layers.
+ * Single rAF-throttled scroll/resize loop so all {@link CherryBlossomCardBg}
+ * layers can recompute document-Y alignment (seamless repeat without `fixed`).
  */
 export function CherryBlossomScrollBridge() {
   useEffect(() => {
-    const root = document.documentElement;
-    const apply = () => {
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const y = reduce ? 0 : -window.scrollY * parallaxFactor();
-      root.style.setProperty("--cherry-scroll-y", `${y}px`);
+    let rafId = 0;
+
+    const schedule = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        notifyCherryPatternAlign();
+      });
     };
-    apply();
-    window.addEventListener("scroll", apply, { passive: true });
-    window.addEventListener("resize", apply, { passive: true });
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    mq.addEventListener("change", apply);
+
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule, { passive: true });
+
     return () => {
-      window.removeEventListener("scroll", apply);
-      window.removeEventListener("resize", apply);
-      mq.removeEventListener("change", apply);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
     };
   }, []);
   return null;
