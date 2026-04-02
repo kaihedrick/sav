@@ -22,13 +22,14 @@ const SCENE_BASE_WIDTH = 40;
 
 type DecoKind = "bag" | "cross" | "flower";
 
+/** Floating shapes only — pink/rose (card sakura layer is separate) */
 const DECO_PALETTE = [
-  "#ff4da6",
-  "#ff8cc8",
-  "#a8f0dc",
-  "#6aa8ff",
-  "#ffc8e8",
-  "#e879f9",
+  "#ff0088",
+  "#ec4899",
+  "#f472b6",
+  "#db2777",
+  "#fda4d0",
+  "#be185d",
 ] as const;
 
 const KIND_CYCLE: DecoKind[] = [
@@ -360,8 +361,8 @@ function FloatingShape({ p }: { p: FloatingParticle }) {
             viewBox={vb}
             className={
               draw
-                ? "deco-path-draw h-full w-full overflow-visible drop-shadow-[0_0_10px_rgba(255,100,180,0.25)]"
-                : "h-full w-full overflow-visible drop-shadow-[0_0_10px_rgba(255,100,180,0.25)]"
+                ? "deco-path-draw h-full w-full overflow-visible drop-shadow-[0_0_12px_rgba(236,72,153,0.22)]"
+                : "h-full w-full overflow-visible drop-shadow-[0_0_12px_rgba(236,72,153,0.22)]"
             }
             style={
               draw
@@ -436,7 +437,7 @@ export function DecorativeBackground() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-gradient-to-b from-black via-[#10060d] to-[#030102]"
+      className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-gradient-to-b from-black via-[#12060f] to-[#030102]"
       aria-hidden
     >
       {reduced ? (

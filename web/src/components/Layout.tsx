@@ -1,6 +1,7 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { CherryBlossomScrollBridge } from "./CherryBlossomScrollBridge";
 import { DecorativeBackground } from "./DecorativeBackground";
 import { clearTokens } from "../lib/tokens";
 import { apiJson } from "../lib/api";
@@ -49,6 +50,7 @@ export function Layout({
   return (
     <>
       <DecorativeBackground />
+      <CherryBlossomScrollBridge />
       <div
         className={`relative z-10 flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col ${
           showNav
