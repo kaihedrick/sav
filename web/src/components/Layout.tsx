@@ -66,7 +66,7 @@ export function Layout({
                 onClick={() => setMenuOpen(false)}
               />
             ) : null}
-            <header className="sticky top-0 z-20 overflow-visible border-b border-pink-400/35 bg-zinc-950/80 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-md shadow-black/25">
+            <header className="sticky top-0 z-20 overflow-visible border-b border-pink-400/35 bg-zinc-950/80 pt-[env(safe-area-inset-top,0px)] font-sans text-pink-50 shadow-md shadow-black/25 backdrop-blur-md">
               <div className="relative mx-auto max-w-3xl overflow-visible px-safe py-3 md:max-w-5xl">
                 <Link
                   to="/"
