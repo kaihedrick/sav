@@ -89,10 +89,6 @@ body {
     @apply rounded-2xl shadow-xl shadow-bob-wood/15;
   }
 
-  /** Opaque panel when virtual keyboard is open — no backdrop-blur (WebKit avoids bad composites). */
-  .surface-glass-modal-panel-solid {
-    @apply rounded-2xl border border-bob-mist/90 bg-bob-cream;
-  }
   .surface-glass-auth {
     @apply rounded-3xl border border-bob-mist/90 bg-bob-cream/95 shadow-lg shadow-bob-wood/10 backdrop-blur-sm;
   }

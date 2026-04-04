@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "../components/Layout";
 import { apiJson, apiFetch } from "../lib/api";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
 import { getIdToken } from "../lib/tokens";
 import { isAdminFromToken } from "../lib/sessionJwt";
 import {
@@ -13,8 +12,6 @@ import {
   stockStatusClasses,
 } from "../lib/inventoryCardStyle";
 import { IconButton } from "../components/IconButton";
-import { useVisualViewportRect } from "../lib/useVisualViewportRect";
-import { useVirtualKeyboardOpen } from "../lib/useVirtualKeyboardOpen";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "";
 
@@ -120,9 +117,6 @@ export function HomePage() {
     if (quickOrderItem) setQuickQty(1);
   }, [quickOrderItem]);
 
-  const quickOrderVv = useVisualViewportRect(!!quickOrderItem);
-  const quickOrderKeyboardOpen = useVirtualKeyboardOpen(!!quickOrderItem);
-
   useEffect(() => {
     if (!quickOrderItem) return;
     const onKey = (e: KeyboardEvent) => {
@@ -131,22 +125,6 @@ export function HomePage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [quickOrderItem]);
-
-  const quickOrderOverlayStyle: CSSProperties | undefined = quickOrderVv
-    ? {
-        position: "fixed",
-        top: quickOrderVv.top,
-        left: quickOrderVv.left,
-        width: quickOrderVv.width,
-        height: quickOrderVv.height,
-        zIndex: 50,
-      }
-    : undefined;
-
-  /** Extra bottom space so `shadow-xl` clears iOS WebKit’s clip at the input-accessory / keyboard seam (esp. iOS 18+). */
-  const quickOrderOverlayClass =
-    "flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2.75rem,calc(env(safe-area-inset-bottom)+1.75rem))] sm:items-center " +
-    (quickOrderOverlayStyle ? "" : "fixed-cover-viewport z-50 ");
 
   const quickCommit = useMutation({
     mutationFn: (payload: { itemId: string; qty: number }) =>
@@ -261,14 +239,12 @@ export function HomePage() {
         })}
       </section>
 
-      {quickOrderItem &&
-        createPortal(
-          <div
-            className={quickOrderOverlayClass}
-            style={quickOrderOverlayStyle}
-            role="presentation"
-            onClick={() => setQuickOrderItem(null)}
-          >
+      {quickOrderItem && (
+        <div
+          className="fixed-cover-viewport z-50 flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,calc(env(safe-area-inset-bottom)+1.25rem))] sm:items-center"
+          role="presentation"
+          onClick={() => setQuickOrderItem(null)}
+        >
           <div
             role="dialog"
             aria-modal="true"
@@ -276,13 +252,7 @@ export function HomePage() {
             className="surface-glass-modal-shell w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className={
-                quickOrderKeyboardOpen
-                  ? "surface-glass-modal-panel-solid relative p-5"
-                  : "surface-glass-modal-panel relative p-5"
-              }
-            >
+            <div className="surface-glass-modal-panel relative p-5">
             <div className="relative z-10">
             <h2
               id="quick-order-title"
@@ -354,9 +324,8 @@ export function HomePage() {
             </div>
             </div>
           </div>
-        </div>,
-          document.body,
-        )}
+        </div>
+      )}
 
       <section className="surface-glass relative isolate mt-10 overflow-hidden p-4 md:p-6">
         <div className="relative z-10">
