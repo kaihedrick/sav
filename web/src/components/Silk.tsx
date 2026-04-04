@@ -110,7 +110,7 @@ function SilkPlane({
     const mesh = meshRef.current;
     if (!mesh) return;
     mesh.scale.set(viewport.width, viewport.height, 1);
-  }, [viewport]);
+  }, [viewport.width, viewport.height]);
 
   useFrame((_, delta) => {
     const mesh = meshRef.current;
@@ -152,12 +152,14 @@ export function Silk({
   className = "",
 }: SilkProps) {
   return (
-    <div className={`h-full w-full ${className}`.trim()}>
+    <div className={`h-full min-h-full w-full min-w-0 ${className}`.trim()}>
       <Canvas
         dpr={[1, 2]}
         frameloop="always"
         gl={{ alpha: false, antialias: true, powerPreference: "high-performance" }}
         camera={{ position: [0, 0, 1], fov: 75, near: 0.1, far: 100 }}
+        resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
+        style={{ display: "block", width: "100%", height: "100%" }}
       >
         <SilkPlane
           speed={speed}

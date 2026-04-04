@@ -29,13 +29,13 @@ export function StaticPageBackground() {
 
   return (
     <div
-      className="pointer-events-none fixed-cover-viewport -z-10 bg-bob-cream"
+      className="pointer-events-none fixed inset-0 -z-10 h-[100svh] min-h-[100vh] min-h-[100svh] min-h-[100dvh] min-h-[-webkit-fill-available] w-full bg-bob-cream"
       aria-hidden
     >
-      {/* Clip shader/blur inside full-bleed layer so safe-area + notch still get bg from parent */}
-      <div className="absolute inset-0 overflow-hidden">
+      {/* WebGL layer: own overflow visible so Canvas isn’t clipped; blobs use overflow-hidden below */}
+      <div className="absolute inset-0 z-0 h-full min-h-[100%] w-full">
         {!reduceMotion ? (
-          <div className="absolute inset-0 h-full w-full min-h-[100vh] min-h-[100svh] min-h-[100dvh] min-h-[-webkit-fill-available] opacity-[0.45]">
+          <div className="absolute inset-0 h-full min-h-full w-full opacity-[0.45]">
             <Suspense fallback={null}>
               <Silk
                 speed={3.5}
@@ -43,12 +43,13 @@ export function StaticPageBackground() {
                 color={SILK_COLOR}
                 noiseIntensity={0.55}
                 rotation={0}
-                className="min-h-full"
+                className="h-full min-h-full"
               />
             </Suspense>
           </div>
         ) : null}
 
+      <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
         <div className="absolute inset-0 bg-bob-card/25" />
 
         <div className="absolute -left-[22%] top-[6%] h-[min(85vw,540px)] w-[min(85vw,540px)] rounded-full bg-bob-mist/50 blur-3xl" />
