@@ -48,6 +48,7 @@ export function StaticPageBackground() {
             </Suspense>
           </div>
         ) : null}
+      </div>
 
       <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
         <div className="absolute inset-0 bg-bob-card/25" />
