@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "../components/Layout";
 import { apiJson, apiFetch } from "../lib/api";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { getIdToken } from "../lib/tokens";
 import { isAdminFromToken } from "../lib/sessionJwt";
 import {
@@ -12,6 +12,7 @@ import {
   stockStatusClasses,
 } from "../lib/inventoryCardStyle";
 import { IconButton } from "../components/IconButton";
+import { useVisualViewportRect } from "../lib/useVisualViewportRect";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "";
 
@@ -117,6 +118,8 @@ export function HomePage() {
     if (quickOrderItem) setQuickQty(1);
   }, [quickOrderItem]);
 
+  const quickOrderVv = useVisualViewportRect(!!quickOrderItem);
+
   useEffect(() => {
     if (!quickOrderItem) return;
     const onKey = (e: KeyboardEvent) => {
@@ -125,6 +128,21 @@ export function HomePage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [quickOrderItem]);
+
+  const quickOrderOverlayStyle: CSSProperties | undefined = quickOrderVv
+    ? {
+        position: "fixed",
+        top: quickOrderVv.top,
+        left: quickOrderVv.left,
+        width: quickOrderVv.width,
+        height: quickOrderVv.height,
+        zIndex: 50,
+      }
+    : undefined;
+
+  const quickOrderOverlayClass =
+    "flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] sm:items-center " +
+    (quickOrderOverlayStyle ? "" : "fixed-cover-viewport z-50 ");
 
   const quickCommit = useMutation({
     mutationFn: (payload: { itemId: string; qty: number }) =>
@@ -241,7 +259,8 @@ export function HomePage() {
 
       {quickOrderItem && (
         <div
-          className="fixed-cover-viewport z-50 flex items-end justify-center bg-bob-ink/40 p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+          className={quickOrderOverlayClass}
+          style={quickOrderOverlayStyle}
           role="presentation"
           onClick={() => setQuickOrderItem(null)}
         >
@@ -249,7 +268,7 @@ export function HomePage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="quick-order-title"
-            className="surface-glass-modal relative isolate w-full max-w-md overflow-hidden p-5"
+            className="surface-glass-modal relative isolate mb-1 w-full max-w-md p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative z-10">
