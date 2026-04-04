@@ -1,7 +1,3 @@
-@import "@fontsource/dm-sans/400.css";
-@import "@fontsource/dm-sans/500.css";
-@import "@fontsource/dm-sans/600.css";
-@import "@fontsource/dm-sans/700.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,17 +7,15 @@ html {
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Match DecorativeBackground bottom stop — avoids white bars behind notch / home indicator */
-  background-color: #030102;
+  background-color: #f8f6f2;
   min-height: 100%;
 }
 
 body {
-  @apply font-sans antialiased;
+  @apply font-sans antialiased text-bob-ink;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
-  background-color: #030102;
-  color: #0c0c0c;
+  background-color: #f8f6f2;
 }
 
 @layer base {
@@ -29,11 +23,9 @@ body {
   h2,
   h3,
   h4 {
-    /* Same stack as theme.extend.fontFamily.heading (DM Sans) */
-    @apply font-sans font-semibold tracking-tight;
+    @apply font-heading font-semibold tracking-tight text-bob-ink;
   }
 }
-
 
 #root {
   position: relative;
@@ -44,149 +36,42 @@ body {
 }
 
 @layer utilities {
-  /* Horizontal insets on notched phones (e.g. landscape) */
   .px-safe {
     padding-left: max(1rem, env(safe-area-inset-left, 0px));
     padding-right: max(1rem, env(safe-area-inset-right, 0px));
   }
+
+  /** Section titles — elegant serif italic (event-flyer style) */
+  .section-title {
+    @apply font-serif italic font-semibold text-bob-wood;
+  }
+
+  .section-title i {
+    font-style: normal;
+  }
 }
 
-/* Match header: border-pink-400/35 bg-zinc-950/80 backdrop-blur-md */
 @layer components {
-  /**
-   * Nav chrome: light default text only (not body’s #0c0c0c).
-   * Do not set font-family here — it was forcing sans onto the whole header and could make
-   * “Bags of Blessings” match the toolbar instead of Cormorant on some builds.
-   */
   .layout-header-chrome {
-    color: rgb(253 242 248);
+    @apply text-bob-ink;
   }
 
   .surface-glass {
-    @apply rounded-2xl border border-pink-400/35 bg-zinc-950/80 shadow-md shadow-black/25 backdrop-blur-md;
+    @apply rounded-2xl border border-bob-mist bg-white/85 shadow-md shadow-bob-wood/10 backdrop-blur-sm;
   }
   .surface-glass-modal {
-    @apply rounded-2xl border border-pink-400/35 bg-zinc-950/85 shadow-xl shadow-black/40 backdrop-blur-md;
+    @apply rounded-2xl border border-bob-mist bg-white/95 shadow-xl shadow-bob-wood/15 backdrop-blur-sm;
   }
   .surface-glass-auth {
-    @apply rounded-3xl border border-pink-400/35 bg-zinc-950/85 shadow-lg shadow-black/30 backdrop-blur-md;
+    @apply rounded-3xl border border-bob-mist bg-white/95 shadow-lg shadow-bob-wood/10 backdrop-blur-sm;
   }
   .surface-glass-btn {
-    @apply rounded-full border border-pink-400/40 bg-zinc-900/55 text-pink-100 shadow-sm backdrop-blur-sm transition-colors hover:bg-zinc-800/70;
+    @apply rounded-full border border-bob-mist bg-white/90 text-bob-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-bob-peach/50 hover:border-bob-gold/40;
   }
 }
 
-/* DecorativeBackground — rise + 3D tilt (disabled when .deco-reduced is set) */
-.perspective-deco {
-  perspective: 1100px;
-  perspective-origin: 50% 35%;
-}
-
-.deco-rise-anim {
-  animation: deco-rise linear infinite;
-  will-change: transform, opacity;
-}
-
-.deco-tilt-anim {
-  animation: deco-tilt ease-in-out infinite;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-
-@keyframes deco-rise {
-  0% {
-    transform: translate3d(0, 0, 0);
-    opacity: 0;
-  }
-  4% {
-    opacity: 1;
-  }
-  92% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate3d(0, -130vh, 0);
-    opacity: 0.25;
-  }
-}
-
-@keyframes deco-tilt {
-  0% {
-    transform: rotateX(10deg) rotateY(-20deg);
-  }
-  50% {
-    transform: rotateX(-12deg) rotateY(18deg);
-  }
-  100% {
-    transform: rotateX(10deg) rotateY(-20deg);
-  }
-}
-
-/* Outline “draw” for paths that skip 3D tilt (floating) or static reduced-motion grid */
-@keyframes deco-outline-draw-cycle {
-  0%,
-  12% {
-    stroke-dashoffset: 1;
-  }
-  38%,
-  78% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: 1;
-  }
-}
-
-.deco-no-tilt-pose {
-  transform: rotateX(8deg) rotateY(-14deg);
-  transform-style: preserve-3d;
-}
-
-.deco-path-draw path {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation-name: deco-outline-draw-cycle;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-duration: var(--deco-draw-dur, 3.2s);
-  animation-delay: var(--deco-draw-delay, 0s);
-  will-change: stroke-dashoffset;
-}
-
-.deco-static-outline-draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation-name: deco-outline-draw-cycle;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  will-change: stroke-dashoffset;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .deco-rise-anim,
-  .deco-tilt-anim {
-    animation: none !important;
-  }
-
-  .deco-rise-anim {
-    transform: translate3d(0, -20vh, 0);
-    opacity: 0.45;
-  }
-
-  .deco-tilt-anim {
-    transform: rotateX(6deg) rotateY(-8deg);
-  }
-
-  .deco-path-draw path,
-  .deco-static-outline-draw {
-    animation-duration: calc(var(--deco-draw-dur, 3.2s) * 2.2) !important;
-  }
-}
-
-/* Header wordmark only: system UI sans (the style you preferred vs Cormorant) */
 a.wordmark-title {
-  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-    "Segoe UI Symbol", "Noto Color Emoji";
+  font-family: "Dancing Script", cursive;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }

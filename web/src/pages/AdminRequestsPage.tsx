@@ -61,46 +61,41 @@ export function AdminRequestsPage() {
   return (
     <Layout isAdmin>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h1 className="text-xl font-bold tracking-tight text-white drop-shadow-md md:text-2xl">
+        <h1 className="text-xl font-bold tracking-tight text-bob-ink md:text-2xl">
           Request inbox
         </h1>
         <Link
           to="/admin"
-          className="text-sm font-medium text-bob-pink underline decoration-pink-300 underline-offset-2"
+          className="text-sm font-medium text-bob-magenta underline decoration-bob-rose underline-offset-2 hover:text-bob-gold-dark"
         >
           Catalog
         </Link>
       </div>
-      <p className="max-w-2xl text-sm leading-relaxed text-pink-100/90">
+      <p className="max-w-2xl text-sm leading-relaxed text-bob-muted">
         Newest first. Rejecting removes a commitment from projected totals.
         Mark received after the event.
       </p>
 
-      {isLoading && (
-        <p className="mt-4 text-sm text-pink-200/90">Loading…</p>
-      )}
+      {isLoading && <p className="mt-4 text-sm text-bob-muted">Loading…</p>}
       {error && (
-        <p className="mt-4 rounded-xl border border-rose-400/40 bg-rose-950/50 px-3 py-2 text-sm text-red-200 backdrop-blur-sm">
+        <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
           {(error as Error).message}
         </p>
       )}
 
       <ul className="mt-6 space-y-4">
         {requests.map((r) => (
-          <li
-            key={r.id}
-            className="surface-glass p-4"
-          >
+          <li key={r.id} className="surface-glass p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="font-semibold text-pink-50">{r.userName}</p>
-                <p className="text-xs text-pink-200/75">
+                <p className="font-semibold text-bob-ink">{r.userName}</p>
+                <p className="text-xs text-bob-muted">
                   {new Date(r.createdAt).toLocaleString()} ·{" "}
-                  <span className="font-medium text-bob-pink">{r.status}</span>
+                  <span className="font-medium text-bob-magenta">{r.status}</span>
                 </p>
               </div>
             </div>
-            <ul className="mt-2 text-sm text-pink-100/95">
+            <ul className="mt-2 text-sm text-bob-ink/95">
               {r.lines.map((l, i) => (
                 <li key={i}>
                   {itemNameById.get(l.itemId) ?? "Unknown item"} × {l.qty}
@@ -112,7 +107,7 @@ export function AdminRequestsPage() {
                 <>
                   <button
                     type="button"
-                    className="rounded-full border border-rose-400/40 bg-rose-950/45 px-3 py-1.5 text-sm font-medium text-rose-200 backdrop-blur-sm hover:bg-rose-900/55"
+                    className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-900 hover:bg-rose-100"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "rejected" })
                     }
@@ -121,7 +116,7 @@ export function AdminRequestsPage() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-full bg-bob-pink px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-pink-600"
+                    className="rounded-full bg-bob-gold px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-bob-gold-dark"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "received" })
                     }

@@ -12,27 +12,27 @@ export function stockLevelFromOnHand(onHand: number): StockLevel {
 export function stockStatusClasses(level: StockLevel): {
   label: string;
   textClass: string;
-  /** For dark glass panels (navbar-style cards). */
-  textClassDark: string;
+  /** Status line on dusty-rose card (`bg-bob-card`). */
+  textClassOnCard: string;
 } {
   switch (level) {
     case "out":
       return {
         label: "Out of stock",
         textClass: "font-semibold text-red-600",
-        textClassDark: "font-semibold text-red-400",
+        textClassOnCard: "font-semibold text-red-700",
       };
     case "low":
       return {
         label: "Low stock",
         textClass: "font-semibold text-amber-600",
-        textClassDark: "font-semibold text-amber-300",
+        textClassOnCard: "font-semibold text-amber-700",
       };
     default:
       return {
         label: "In stock",
         textClass: "font-semibold text-emerald-700",
-        textClassDark: "font-semibold text-emerald-300",
+        textClassOnCard: "font-semibold text-emerald-800",
       };
   }
 }
@@ -78,46 +78,47 @@ export function stockExcelTagStyle(onHand: number): {
 
 const CATEGORY_PALETTE = [
   {
-    borderL: "border-l-pink-500",
-    ring: "ring-pink-200/60",
-    panelBg: "bg-gradient-to-br from-pink-50/95 to-white/95",
-    pill: "bg-pink-100 text-pink-900",
-    pillGlass: "border border-pink-400/30 bg-pink-500/15 text-pink-100",
+    borderL: "border-l-bob-magenta",
+    ring: "ring-bob-rose/50",
+    panelBg: "bg-gradient-to-br from-bob-peach/95 to-white/95",
+    pill: "bg-white/90 text-bob-ink border border-bob-mist",
+    pillGlass:
+      "border border-bob-wood/25 bg-white/75 text-bob-ink shadow-sm",
   },
   {
-    borderL: "border-l-violet-500",
+    borderL: "border-l-violet-600",
     ring: "ring-violet-200/60",
     panelBg: "bg-gradient-to-br from-violet-50/95 to-white/95",
-    pill: "bg-violet-100 text-violet-900",
-    pillGlass: "border border-violet-400/30 bg-violet-500/15 text-violet-100",
+    pill: "bg-white/90 text-bob-ink border border-bob-mist",
+    pillGlass: "border border-violet-300/80 bg-white/75 text-bob-ink shadow-sm",
   },
   {
-    borderL: "border-l-sky-500",
+    borderL: "border-l-bob-sky",
     ring: "ring-sky-200/60",
     panelBg: "bg-gradient-to-br from-sky-50/95 to-white/95",
-    pill: "bg-sky-100 text-sky-900",
-    pillGlass: "border border-sky-400/30 bg-sky-500/15 text-sky-100",
+    pill: "bg-white/90 text-bob-ink border border-bob-mist",
+    pillGlass: "border border-sky-300/80 bg-white/75 text-bob-ink shadow-sm",
   },
   {
-    borderL: "border-l-amber-500",
+    borderL: "border-l-amber-600",
     ring: "ring-amber-200/60",
     panelBg: "bg-gradient-to-br from-amber-50/95 to-white/95",
-    pill: "bg-amber-100 text-amber-900",
-    pillGlass: "border border-amber-400/30 bg-amber-500/15 text-amber-100",
+    pill: "bg-white/90 text-bob-ink border border-bob-mist",
+    pillGlass: "border border-amber-300/80 bg-white/75 text-bob-ink shadow-sm",
   },
   {
-    borderL: "border-l-emerald-500",
+    borderL: "border-l-bob-leaf",
     ring: "ring-emerald-200/60",
     panelBg: "bg-gradient-to-br from-emerald-50/95 to-white/95",
-    pill: "bg-emerald-100 text-emerald-900",
-    pillGlass: "border border-emerald-400/30 bg-emerald-500/15 text-emerald-100",
+    pill: "bg-white/90 text-bob-ink border border-bob-mist",
+    pillGlass: "border border-emerald-300/80 bg-white/75 text-bob-ink shadow-sm",
   },
   {
-    borderL: "border-l-orange-500",
+    borderL: "border-l-bob-coral",
     ring: "ring-orange-200/60",
     panelBg: "bg-gradient-to-br from-orange-50/95 to-white/95",
-    pill: "bg-orange-100 text-orange-900",
-    pillGlass: "border border-orange-400/30 bg-orange-500/15 text-orange-100",
+    pill: "bg-white/90 text-bob-ink border border-bob-mist",
+    pillGlass: "border border-orange-300/80 bg-white/75 text-bob-ink shadow-sm",
   },
 ] as const;
 
@@ -174,9 +175,9 @@ export function categoryAccent(category: string) {
   return CATEGORY_PALETTE[categoryPaletteIndex(category)]!;
 }
 
-/** Shell classes matching the app nav: zinc glass + colored left edge. */
+/** Dusty-rose card shell + colored left edge (event-flyer palette). */
 export function inventoryGlassCardClass(accent: (typeof CATEGORY_PALETTE)[number]): string {
-  return `relative isolate cursor-pointer overflow-hidden rounded-2xl border border-pink-400/35 border-l-4 ${accent.borderL} bg-zinc-950/80 p-4 pr-10 text-left shadow-md shadow-black/25 backdrop-blur-md ring-1 ring-pink-400/20 transition hover:ring-2 hover:ring-pink-400/40`;
+  return `relative isolate cursor-pointer overflow-hidden rounded-2xl border border-bob-mist/90 border-l-4 ${accent.borderL} bg-bob-card p-4 pr-10 text-left shadow-md shadow-bob-wood/10 ring-1 ring-bob-mist/40 transition hover:ring-2 hover:ring-bob-gold/35`;
 }
 
 /** Emoji from item name + category (no extra dependencies). */

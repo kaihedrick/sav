@@ -12,7 +12,6 @@ import {
   stockStatusClasses,
 } from "../lib/inventoryCardStyle";
 import { IconButton } from "../components/IconButton";
-import { CherryBlossomCardBg } from "../components/CherryBlossomCardBg";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "";
 
@@ -158,18 +157,18 @@ export function HomePage() {
 
   return (
     <Layout isAdmin={admin}>
-      <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md md:text-3xl">
+      <h1 className="text-2xl font-bold tracking-tight text-bob-ink md:text-3xl">
         What we need
       </h1>
       <section className="mt-6 space-y-3">
         {inv.isLoading && (
-          <p className="text-pink-200/90" aria-live="polite">
+          <p className="text-bob-muted" aria-live="polite">
             <i className="fa-solid fa-spinner fa-spin" aria-hidden />{" "}
             <span className="sr-only">Loading</span>
           </p>
         )}
         {inv.error && (
-          <p className="rounded-xl border border-rose-400/40 bg-rose-950/50 px-3 py-2 text-sm text-red-200 backdrop-blur-sm">
+          <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
             {(inv.error as Error).message}
           </p>
         )}
@@ -192,23 +191,22 @@ export function HomePage() {
               }}
               className={inventoryGlassCardClass(accent)}
             >
-              <CherryBlossomCardBg />
               <span
-                className="pointer-events-none absolute right-3 top-3 z-10 text-pink-300/50"
+                className="pointer-events-none absolute right-3 top-3 z-10 text-bob-gold/50"
                 aria-hidden
               >
                 <i className="fa-solid fa-circle-plus text-lg" />
               </span>
               <div className="relative z-10 flex flex-wrap items-start gap-3">
                 <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-2xl shadow-sm"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-bob-mist bg-white/80 text-2xl shadow-sm"
                   aria-hidden
                 >
                   {emoji}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="font-semibold text-pink-50">{it.name}</h2>
+                    <h2 className="font-semibold text-bob-ink">{it.name}</h2>
                     {(it.category || "").trim() ? (
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${accent.pillGlass}`}
@@ -217,21 +215,21 @@ export function HomePage() {
                       </span>
                     ) : null}
                   </div>
-                  <p className={`mt-1 text-sm ${status.textClassDark}`}>
+                  <p className={`mt-1 text-sm ${status.textClassOnCard}`}>
                     {status.label}
                   </p>
                   <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <dt className="text-pink-200/65">On hand</dt>
+                      <dt className="text-bob-muted">On hand</dt>
                       <dd
-                        className={`font-medium ${level === "out" ? "text-red-400" : level === "low" ? "text-amber-300" : "text-emerald-300"}`}
+                        className={`font-medium ${level === "out" ? "text-red-700" : level === "low" ? "text-amber-700" : "text-emerald-800"}`}
                       >
                         {it.onHand}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-pink-200/65">Projected</dt>
-                      <dd className="font-medium text-pink-300">{it.projected}</dd>
+                      <dt className="text-bob-muted">Projected</dt>
+                      <dd className="font-medium text-bob-magenta">{it.projected}</dd>
                     </div>
                   </dl>
                 </div>
@@ -243,7 +241,7 @@ export function HomePage() {
 
       {quickOrderItem && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-bob-ink/40 p-4 sm:items-center"
           role="presentation"
           onClick={() => setQuickOrderItem(null)}
         >
@@ -254,24 +252,23 @@ export function HomePage() {
             className="surface-glass-modal relative isolate w-full max-w-md overflow-hidden p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <CherryBlossomCardBg density="panel" />
             <div className="relative z-10">
             <h2
               id="quick-order-title"
-              className="flex items-center gap-2 text-lg font-semibold text-pink-50"
+              className="flex items-center gap-2 text-lg font-semibold text-bob-ink"
             >
-              <i className="fa-solid fa-hand-holding-heart text-bob-pink" aria-hidden />
+              <i className="fa-solid fa-hand-holding-heart text-bob-gold" aria-hidden />
               {quickOrderItem.name}
             </h2>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-pink-100">
-                <i className="fa-solid fa-hashtag text-pink-300/70" title="Qty" aria-hidden />
+              <label className="flex items-center gap-2 text-bob-muted">
+                <i className="fa-solid fa-hashtag text-bob-gold/80" title="Qty" aria-hidden />
                 <span className="sr-only">Quantity</span>
                 <input
                   type="number"
                   min={1}
                   autoFocus
-                  className="w-24 rounded-xl border border-neutral-200 px-3 py-2.5 text-base text-zinc-950 focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
+                  className="w-24 rounded-xl border border-neutral-200 px-3 py-2.5 text-base text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/30"
                   value={quickQty}
                   onChange={(e) =>
                     setQuickQty(Math.max(1, Number(e.target.value) || 1))
@@ -297,17 +294,17 @@ export function HomePage() {
                     qty: quickQty,
                   })
                 }
-                className="h-11 w-11 rounded-full bg-bob-pink text-white shadow-md transition-colors hover:bg-pink-600 disabled:opacity-50"
+                className="h-11 w-11 rounded-full bg-bob-gold text-white shadow-md transition-colors hover:bg-bob-gold-dark disabled:opacity-50"
               />
               <IconButton
                 icon="fa-xmark"
                 label="Close"
                 onClick={() => setQuickOrderItem(null)}
-                className="h-11 w-11 rounded-full border border-pink-400/35 bg-zinc-900/60 text-pink-200/90 backdrop-blur-sm hover:bg-zinc-800/70"
+                className="h-11 w-11 rounded-full border border-bob-mist bg-white text-bob-muted shadow-sm hover:bg-bob-mist/60"
               />
             </div>
             {quickCommit.isError && (
-              <p className="mt-3 text-sm text-red-300">
+              <p className="mt-3 text-sm text-red-700">
                 {(quickCommit.error as Error).message}
               </p>
             )}
@@ -317,9 +314,8 @@ export function HomePage() {
       )}
 
       <section className="surface-glass relative isolate mt-10 overflow-hidden p-4 md:p-6">
-        <CherryBlossomCardBg density="panel" />
         <div className="relative z-10">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-pink-100">
+        <h2 className="section-title flex items-center gap-2 text-lg">
           <i className="fa-solid fa-pen-to-square" aria-hidden />
           New request
         </h2>
@@ -330,7 +326,7 @@ export function HomePage() {
               className="flex flex-col gap-2 sm:flex-row sm:items-center"
             >
               <select
-                className="flex-1 rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-base text-zinc-950 [color-scheme:light] focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200 [&>option]:bg-white [&>option]:text-zinc-900"
+                className="flex-1 rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-base text-bob-ink [color-scheme:light] focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25 [&>option]:bg-white [&>option]:text-bob-ink"
                 value={row.itemId}
                 onChange={(e) => {
                   const next = [...lines];
@@ -348,7 +344,7 @@ export function HomePage() {
               <input
                 type="number"
                 min={1}
-                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-zinc-950 focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200 sm:w-24"
+                className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25 sm:w-24"
                 value={row.qty}
                 onChange={(e) => {
                   const next = [...lines];
@@ -363,7 +359,7 @@ export function HomePage() {
                 <IconButton
                   icon="fa-trash"
                   label="Remove line"
-                  className="h-10 w-10 rounded-lg border border-rose-400/35 bg-rose-950/35 text-rose-200 backdrop-blur-sm hover:bg-rose-900/45"
+                  className="h-10 w-10 rounded-lg border border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"
                   onClick={() => setLines(lines.filter((_, i) => i !== idx))}
                 />
               )}
@@ -371,7 +367,7 @@ export function HomePage() {
           ))}
           <button
             type="button"
-            className="inline-flex items-center gap-2 text-sm font-medium text-pink-300 hover:text-pink-200"
+            className="inline-flex items-center gap-2 text-sm font-medium text-bob-magenta hover:text-bob-gold-dark"
             onClick={() => setLines([...lines, { itemId: "", qty: 1 }])}
           >
             <i className="fa-solid fa-plus" aria-hidden />
@@ -387,11 +383,11 @@ export function HomePage() {
               lines.every((l) => !l.itemId || l.qty < 1)
             }
             onClick={() => createReq.mutate()}
-            className="h-12 w-12 rounded-full border-2 border-pink-400/60 bg-bob-pink text-lg text-white shadow-lg shadow-pink-900/25 transition-colors hover:bg-pink-600 disabled:opacity-50"
+            className="h-12 w-12 rounded-full border-2 border-bob-gold-dark/40 bg-bob-gold text-lg text-white shadow-lg shadow-bob-wood/20 transition-colors hover:bg-bob-gold-dark disabled:opacity-50"
           />
         </div>
         {createReq.isError && (
-          <p className="mt-2 text-sm text-red-300">
+          <p className="mt-2 text-sm text-red-700">
             {(createReq.error as Error).message}
           </p>
         )}
@@ -399,7 +395,7 @@ export function HomePage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white drop-shadow-sm">
+        <h2 className="section-title flex items-center gap-2 text-lg tracking-tight">
           <i
             className={`fa-solid ${admin ? "fa-clipboard-list" : "fa-users"}`}
             aria-hidden
@@ -407,20 +403,20 @@ export function HomePage() {
           {admin ? "All requests" : "Community"}
         </h2>
         {!admin && community.isLoading && (
-          <p className="mt-3 text-pink-200/90" aria-live="polite">
+          <p className="mt-3 text-bob-muted" aria-live="polite">
             <i className="fa-solid fa-spinner fa-spin" aria-hidden />
             <span className="sr-only">Loading</span>
           </p>
         )}
         {admin && allForAdmin.isLoading && (
-          <p className="mt-3 text-pink-200/90" aria-live="polite">
+          <p className="mt-3 text-bob-muted" aria-live="polite">
             <i className="fa-solid fa-spinner fa-spin" aria-hidden />
             <span className="sr-only">Loading</span>
           </p>
         )}
         <ul className="mt-3 space-y-3">
           {othersList.length === 0 && !community.isLoading && !allForAdmin.isLoading && (
-            <li className="surface-glass flex items-center gap-2 px-4 py-3 text-sm text-pink-100/90">
+            <li className="surface-glass flex items-center gap-2 px-4 py-3 text-sm text-bob-muted">
               <i className="fa-solid fa-inbox" aria-hidden />
               Empty
             </li>
@@ -431,13 +427,13 @@ export function HomePage() {
               className="surface-glass p-4"
             >
               <div className="flex flex-wrap justify-between gap-2 text-sm">
-                <span className="font-semibold text-pink-50">{r.userName}</span>
-                <span className="font-medium text-bob-pink">{r.status}</span>
+                <span className="font-semibold text-bob-ink">{r.userName}</span>
+                <span className="font-medium text-bob-magenta">{r.status}</span>
               </div>
-              <p className="mt-0.5 text-xs text-pink-200/70">
+              <p className="mt-0.5 text-xs text-bob-muted">
                 {new Date(r.createdAt).toLocaleString()}
               </p>
-              <ul className="mt-2 text-sm text-pink-100/95">
+              <ul className="mt-2 text-sm text-bob-ink/95">
                 {r.lines.map((l, i) => (
                   <li key={i}>{formatLine(l)}</li>
                 ))}
@@ -447,7 +443,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-xmark"
                     label="Reject"
-                    className="h-9 w-9 rounded-full border border-rose-400/40 bg-rose-950/40 text-rose-200 backdrop-blur-sm hover:bg-rose-900/50"
+                    className="h-9 w-9 rounded-full border border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "rejected" })
                     }
@@ -455,7 +451,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-check"
                     label="Mark received"
-                    className="h-9 w-9 rounded-full bg-bob-pink text-white shadow-sm hover:bg-pink-600"
+                    className="h-9 w-9 rounded-full bg-bob-gold text-white shadow-sm hover:bg-bob-gold-dark"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "received" })
                     }
@@ -463,7 +459,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-ban"
                     label="Not brought"
-                    className="surface-glass-btn h-9 w-9 border px-0 text-pink-100"
+                    className="surface-glass-btn h-9 w-9 border px-0 text-bob-ink"
                     onClick={() =>
                       patchStatus.mutate({ id: r.id, status: "not_brought" })
                     }
@@ -476,7 +472,7 @@ export function HomePage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-white drop-shadow-sm">
+        <h2 className="section-title flex items-center gap-2 text-lg tracking-tight">
           <i className="fa-solid fa-user" aria-hidden />
           Mine
         </h2>
@@ -487,12 +483,12 @@ export function HomePage() {
               className="surface-glass p-4"
             >
               <div className="flex flex-wrap justify-between gap-2 text-sm">
-                <span className="font-medium text-bob-pink">{r.status}</span>
-                <span className="text-pink-200/70">
+                <span className="font-medium text-bob-magenta">{r.status}</span>
+                <span className="text-bob-muted">
                   {new Date(r.createdAt).toLocaleString()}
                 </span>
               </div>
-              <ul className="mt-2 text-sm text-pink-100/95">
+              <ul className="mt-2 text-sm text-bob-ink/95">
                 {r.lines.map((l, i) => (
                   <li key={i}>{formatLine(l)}</li>
                 ))}
@@ -502,7 +498,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-pen"
                     label="Edit quantity"
-                    className="surface-glass-btn h-9 w-9 border px-0 text-pink-100"
+                    className="surface-glass-btn h-9 w-9 border px-0 text-bob-ink"
                     onClick={async () => {
                       const qty = Number(
                         prompt(
@@ -529,7 +525,7 @@ export function HomePage() {
                   <IconButton
                     icon="fa-trash"
                     label="Delete request"
-                    className="h-9 w-9 rounded-full border border-rose-400/40 bg-rose-950/40 text-rose-200 backdrop-blur-sm hover:bg-rose-900/50"
+                    className="h-9 w-9 rounded-full border border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"
                     onClick={async () => {
                       if (!confirm("Delete this request?")) return;
                       await apiFetch(`/requests/${r.id}`, { method: "DELETE" });

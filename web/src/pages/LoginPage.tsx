@@ -23,12 +23,12 @@ export function LoginPage() {
   return (
     <Layout showNav={false}>
       <div className="surface-glass-auth mx-auto mt-12 max-w-md p-8">
-        <h1 className="text-center text-2xl font-bold text-bob-pink">
+        <h1 className="wordmark-title text-center text-[clamp(2rem,6vw,2.75rem)] font-semibold text-bob-wood">
           Bags of Blessings
         </h1>
         {!ready && (
-          <p className="mt-4 flex gap-2 rounded-xl border border-amber-400/35 bg-amber-950/50 p-3 text-sm text-amber-100 backdrop-blur-sm">
-            <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-400" aria-hidden />
+          <p className="mt-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-600" aria-hidden />
             <span>
               Set <code className="text-xs">VITE_API_URL</code> &{" "}
               <code className="text-xs">VITE_GOOGLE_CLIENT_ID</code> (env / Vercel), then rebuild.
@@ -36,8 +36,8 @@ export function LoginPage() {
           </p>
         )}
         {apiAuthError && (
-          <p className="mt-4 flex gap-2 rounded-xl border border-rose-400/40 bg-rose-950/50 p-3 text-sm text-red-100 backdrop-blur-sm">
-            <i className="fa-solid fa-circle-xmark mt-0.5 text-red-400" aria-hidden />
+          <p className="mt-4 flex gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+            <i className="fa-solid fa-circle-xmark mt-0.5 text-rose-600" aria-hidden />
             <span>{apiAuthError}</span>
           </p>
         )}
@@ -90,7 +90,7 @@ export function LoginPage() {
               }}
               onError={() => alert("Google sign-in was cancelled or failed.")}
               useOneTap={false}
-              theme="filled_black"
+              theme="outline"
               size="large"
               text="continue_with"
               shape="pill"

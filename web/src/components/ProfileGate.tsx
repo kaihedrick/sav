@@ -32,7 +32,7 @@ export function ProfileGate({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <Layout isAdmin={admin}>
-        <p className="text-pink-100">Loading…</p>
+        <p className="text-bob-muted">Loading…</p>
       </Layout>
     );
   }
@@ -40,7 +40,7 @@ export function ProfileGate({ children }: { children: React.ReactNode }) {
   if (isError) {
     return (
       <Layout isAdmin={admin}>
-        <p className="text-pink-100">Could not load your profile. Try signing in again.</p>
+        <p className="text-bob-muted">Could not load your profile. Try signing in again.</p>
       </Layout>
     );
   }

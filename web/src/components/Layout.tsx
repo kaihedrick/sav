@@ -1,8 +1,7 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { CherryBlossomScrollBridge } from "./CherryBlossomScrollBridge";
-import { DecorativeBackground } from "./DecorativeBackground";
+import { StaticPageBackground } from "./StaticPageBackground";
 import { clearTokens } from "../lib/tokens";
 import { apiJson } from "../lib/api";
 
@@ -39,7 +38,7 @@ export function Layout({
   }, [menuOpen]);
 
   const iconNavBtn =
-    "inline-flex h-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[15px] text-white/90 transition-colors hover:bg-pink-500/20 hover:text-white sm:h-11 sm:min-h-0 sm:min-w-0 sm:p-2.5 sm:text-base";
+    "inline-flex h-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-bob-wood transition-colors hover:bg-bob-mist/80 sm:h-11 sm:min-h-0 sm:min-w-0 sm:p-2.5 sm:text-base";
 
   function signOut() {
     clearTokens();
@@ -49,8 +48,7 @@ export function Layout({
 
   return (
     <>
-      <DecorativeBackground />
-      <CherryBlossomScrollBridge />
+      <StaticPageBackground />
       <div
         className={`relative z-10 flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col ${
           showNav
@@ -63,16 +61,16 @@ export function Layout({
             {menuOpen ? (
               <button
                 type="button"
-                className="fixed inset-0 z-[19] bg-black/55 backdrop-blur-[2px] sm:hidden"
+                className="fixed inset-0 z-[19] bg-bob-ink/25 backdrop-blur-[2px] sm:hidden"
                 aria-label="Close menu"
                 onClick={() => setMenuOpen(false)}
               />
             ) : null}
-            <header className="layout-header-chrome sticky top-0 z-20 overflow-visible border-b border-pink-400/35 bg-zinc-950/80 pt-[env(safe-area-inset-top,0px)] shadow-md shadow-black/25 backdrop-blur-md">
+            <header className="layout-header-chrome sticky top-0 z-20 overflow-visible border-b border-bob-mist bg-bob-cream/95 pt-[env(safe-area-inset-top,0px)] shadow-sm backdrop-blur-sm">
               <div className="relative mx-auto max-w-3xl overflow-visible px-safe py-3 md:max-w-5xl">
                 <Link
                   to="/"
-                  className="wordmark-title absolute left-1/2 top-1/2 z-10 inline-block w-max max-w-[calc(100%-5.5rem)] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-[clamp(1.4rem,5.75vw,2.95rem)] font-light leading-none tracking-[0.06em] text-pink-100 antialiased transition-colors hover:text-pink-50 max-sm:tracking-[0.04em] sm:tracking-[0.07em]"
+                  className="wordmark-title absolute left-1/2 top-1/2 z-10 inline-block w-max max-w-[calc(100%-5.5rem)] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-[clamp(1.65rem,6vw,3.1rem)] font-semibold leading-none tracking-wide text-bob-wood antialiased transition-colors hover:text-bob-ink max-sm:tracking-wide sm:tracking-wide"
                   onClick={() => setMenuOpen(false)}
                 >
                   Bags of Blessings
@@ -81,7 +79,7 @@ export function Layout({
                 <div className="relative z-20 flex min-h-[44px] w-full items-center justify-end gap-1.5 font-sans">
                   <button
                     type="button"
-                    className="inline-flex h-10 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-pink-500/20 sm:hidden"
+                    className="inline-flex h-10 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-bob-wood transition-colors hover:bg-bob-mist/80 sm:hidden"
                     aria-expanded={menuOpen}
                     aria-controls="mobile-nav-menu"
                     aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
@@ -97,64 +95,56 @@ export function Layout({
                     className="hidden flex-shrink-0 items-center gap-x-1.5 sm:flex"
                     aria-label="Main"
                   >
-                  <Link
-                    to="/"
-                    className={iconNavBtn}
-                    aria-label="Home"
-                    title="Home"
-                  >
-                    <i className="fa-solid fa-house" aria-hidden />
-                  </Link>
-                  {liveSheet.data?.url ? (
-                    <a
-                      href={liveSheet.data.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={iconNavBtn}
-                      aria-label="Shared inventory sheet"
-                      title="Shared sheet"
+                    <Link to="/" className={iconNavBtn} aria-label="Home" title="Home">
+                      <i className="fa-solid fa-house" aria-hidden />
+                    </Link>
+                    {liveSheet.data?.url ? (
+                      <a
+                        href={liveSheet.data.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={iconNavBtn}
+                        aria-label="Shared inventory sheet"
+                        title="Shared sheet"
+                      >
+                        <i className="fa-solid fa-table" aria-hidden />
+                      </a>
+                    ) : null}
+                    {isAdmin && (
+                      <>
+                        <Link
+                          to="/admin"
+                          className={iconNavBtn}
+                          aria-label="Admin"
+                          title="Admin"
+                        >
+                          <i className="fa-solid fa-screwdriver-wrench" aria-hidden />
+                        </Link>
+                        <Link
+                          to="/admin/requests"
+                          className={iconNavBtn}
+                          aria-label="Inbox"
+                          title="Inbox"
+                        >
+                          <i className="fa-solid fa-inbox" aria-hidden />
+                        </Link>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      className="inline-flex h-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-bob-muted transition-colors hover:bg-bob-mist/80 sm:h-11 sm:min-h-0 sm:min-w-0 sm:p-2.5 sm:text-base"
+                      aria-label="Sign out"
+                      title="Sign out"
+                      onClick={signOut}
                     >
-                      <i className="fa-solid fa-table" aria-hidden />
-                    </a>
-                  ) : null}
-                  {isAdmin && (
-                    <>
-                      <Link
-                        to="/admin"
-                        className={iconNavBtn}
-                        aria-label="Admin"
-                        title="Admin"
-                      >
-                        <i
-                          className="fa-solid fa-screwdriver-wrench"
-                          aria-hidden
-                        />
-                      </Link>
-                      <Link
-                        to="/admin/requests"
-                        className={iconNavBtn}
-                        aria-label="Inbox"
-                        title="Inbox"
-                      >
-                        <i className="fa-solid fa-inbox" aria-hidden />
-                      </Link>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    className="inline-flex h-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[15px] text-pink-200/85 transition-colors hover:bg-white/10 hover:text-white sm:h-11 sm:min-h-0 sm:min-w-0 sm:p-2.5 sm:text-base"
-                    aria-label="Sign out"
-                    title="Sign out"
-                    onClick={signOut}
-                  >
-                    <i className="fa-solid fa-right-from-bracket" aria-hidden />
-                  </button>
+                      <i className="fa-solid fa-right-from-bracket" aria-hidden />
+                    </button>
                   </nav>
                 </div>
 
                 <div
                   id="mobile-nav-menu"
-                  className={`absolute left-0 right-0 top-full z-30 border-b border-pink-400/35 bg-zinc-950/95 shadow-lg shadow-black/40 backdrop-blur-md ${
+                  className={`absolute left-0 right-0 top-full z-30 border-b border-bob-mist bg-bob-cream/98 shadow-md backdrop-blur-sm ${
                     menuOpen ? "block sm:hidden" : "hidden"
                   }`}
                   role="navigation"
@@ -163,10 +153,10 @@ export function Layout({
                   <div className="flex max-h-[min(70vh,calc(100dvh-5rem))] flex-col overflow-y-auto px-safe pb-[env(safe-area-inset-bottom,8px)] pt-1">
                     <Link
                       to="/"
-                      className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-pink-50 transition-colors hover:bg-white/10"
+                      className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-bob-ink transition-colors hover:bg-bob-mist/60"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <i className="fa-solid fa-house w-5 text-center text-pink-300/90" aria-hidden />
+                      <i className="fa-solid fa-house w-5 text-center text-bob-gold" aria-hidden />
                       Home
                     </Link>
                     {liveSheet.data?.url ? (
@@ -174,10 +164,10 @@ export function Layout({
                         href={liveSheet.data.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-pink-50 transition-colors hover:bg-white/10"
+                        className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-bob-ink transition-colors hover:bg-bob-mist/60"
                         onClick={() => setMenuOpen(false)}
                       >
-                        <i className="fa-solid fa-table w-5 text-center text-pink-300/90" aria-hidden />
+                        <i className="fa-solid fa-table w-5 text-center text-bob-gold" aria-hidden />
                         Shared sheet
                       </a>
                     ) : null}
@@ -185,28 +175,28 @@ export function Layout({
                       <>
                         <Link
                           to="/admin"
-                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-pink-50 transition-colors hover:bg-white/10"
+                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-bob-ink transition-colors hover:bg-bob-mist/60"
                           onClick={() => setMenuOpen(false)}
                         >
                           <i
-                            className="fa-solid fa-screwdriver-wrench w-5 text-center text-pink-300/90"
+                            className="fa-solid fa-screwdriver-wrench w-5 text-center text-bob-gold"
                             aria-hidden
                           />
                           Admin
                         </Link>
                         <Link
                           to="/admin/requests"
-                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-pink-50 transition-colors hover:bg-white/10"
+                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-bob-ink transition-colors hover:bg-bob-mist/60"
                           onClick={() => setMenuOpen(false)}
                         >
-                          <i className="fa-solid fa-inbox w-5 text-center text-pink-300/90" aria-hidden />
+                          <i className="fa-solid fa-inbox w-5 text-center text-bob-gold" aria-hidden />
                           Request inbox
                         </Link>
                       </>
                     )}
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-pink-200/90 transition-colors hover:bg-white/10"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-bob-muted transition-colors hover:bg-bob-mist/60"
                       onClick={signOut}
                     >
                       <i className="fa-solid fa-right-from-bracket w-5 text-center" aria-hidden />
@@ -218,7 +208,7 @@ export function Layout({
             </header>
           </>
         )}
-        <main className="mx-auto w-full max-w-3xl px-safe py-6 text-pink-50 md:max-w-5xl">
+        <main className="mx-auto w-full max-w-3xl px-safe py-6 text-bob-ink md:max-w-5xl">
           {children}
         </main>
       </div>

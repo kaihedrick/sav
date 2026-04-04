@@ -13,7 +13,6 @@ import {
 import { saveInventoryExportTemplate } from "../lib/inventoryExportTemplateStorage";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CherryBlossomCardBg } from "../components/CherryBlossomCardBg";
 import {
   categoryAccent,
   inventoryGlassCardClass,
@@ -174,13 +173,13 @@ export function AdminDashboard() {
   return (
     <Layout isAdmin>
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-white drop-shadow-md">
-          <i className="fa-solid fa-screwdriver-wrench text-pink-200/90" aria-hidden />
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-bob-ink">
+          <i className="fa-solid fa-screwdriver-wrench text-bob-gold" aria-hidden />
           Admin — catalog & stock
         </h1>
         <Link
           to="/admin/requests"
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-bob-pink px-4 py-2 text-center text-sm font-semibold text-white shadow-md shadow-pink-900/15 transition-colors hover:bg-pink-600"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-bob-gold px-4 py-2 text-center text-sm font-semibold text-white shadow-md shadow-bob-wood/15 transition-colors hover:bg-bob-gold-dark"
         >
           <i className="fa-solid fa-inbox" aria-hidden />
           Open request inbox
@@ -188,27 +187,26 @@ export function AdminDashboard() {
       </div>
 
       <section className="surface-glass relative isolate overflow-hidden p-4 md:p-6">
-        <CherryBlossomCardBg density="panel" />
         <div className="relative z-10">
-        <h2 className="flex items-center gap-2 font-semibold text-pink-100">
-          <i className="fa-solid fa-plus text-pink-300/90" aria-hidden />
+        <h2 className="section-title flex items-center gap-2 text-base md:text-lg">
+          <i className="fa-solid fa-plus text-bob-gold" aria-hidden />
           Add item
         </h2>
-        <p className="mt-2 max-w-2xl text-xs text-pink-200/85">
-          <strong className="font-medium text-pink-50">Target</strong> is how many
+        <p className="mt-2 max-w-2xl text-xs text-bob-muted">
+          <strong className="font-medium text-bob-ink">Target</strong> is how many
           units you want for this item in the drive. The public list sorts by how
           far below that goal you still are (using on-hand stock and pending
           requests).
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <input
-            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
+            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
             placeholder="Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <input
-            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
+            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
             placeholder="Category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -216,7 +214,7 @@ export function AdminDashboard() {
           <input
             type="number"
             min={0}
-            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-200"
+            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
             placeholder="Target (goal units)"
             value={targetQty}
             onChange={(e) => setTargetQty(Number(e.target.value))}
@@ -225,7 +223,7 @@ export function AdminDashboard() {
             type="button"
             disabled={!name || createItem.isPending}
             onClick={() => createItem.mutate()}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-bob-ink py-2 font-semibold text-white transition-colors hover:bg-neutral-800 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-bob-wood py-2 font-semibold text-white transition-colors hover:bg-bob-ink disabled:opacity-50"
           >
             <i
               className={`fa-solid ${createItem.isPending ? "fa-spinner fa-spin" : "fa-floppy-disk"}`}
@@ -239,8 +237,8 @@ export function AdminDashboard() {
 
       <section className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 font-semibold tracking-tight text-white drop-shadow-sm">
-            <i className="fa-solid fa-boxes-stacked text-pink-200/90" aria-hidden />
+          <h2 className="section-title flex items-center gap-2 text-base tracking-tight md:text-lg">
+            <i className="fa-solid fa-boxes-stacked text-bob-gold" aria-hidden />
             Inventory
           </h2>
           <div className="flex flex-wrap items-center gap-3">
@@ -334,13 +332,13 @@ export function AdminDashboard() {
           </div>
         </div>
         {copyMsg && (
-          <p className="mb-2 text-sm text-pink-100">{copyMsg}</p>
+          <p className="mb-2 text-sm text-bob-muted">{copyMsg}</p>
         )}
         {importMsg && (
-          <p className="mb-2 text-sm text-pink-100">{importMsg}</p>
+          <p className="mb-2 text-sm text-bob-muted">{importMsg}</p>
         )}
         {importErr && (
-          <p className="mb-2 text-sm text-red-300">{importErr}</p>
+          <p className="mb-2 text-sm text-red-700">{importErr}</p>
         )}
         <div className="space-y-3">
           {items.map((it) => (
@@ -388,23 +386,22 @@ function AdminInventoryCard({
       }}
       className={inventoryGlassCardClass(accent)}
     >
-      <CherryBlossomCardBg />
       <span
-        className="pointer-events-none absolute right-3 top-3 z-10 text-pink-300/50"
+        className="pointer-events-none absolute right-3 top-3 z-10 text-bob-gold/50"
         aria-hidden
       >
         <i className="fa-solid fa-pen-to-square text-lg" />
       </span>
       <div className="relative z-10 flex flex-wrap items-start gap-3">
         <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-2xl shadow-sm"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-bob-mist bg-white/80 text-2xl shadow-sm"
           aria-hidden
         >
           {emoji}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold text-pink-50">{it.name}</h2>
+            <h2 className="font-semibold text-bob-ink">{it.name}</h2>
             {(it.category || "").trim() ? (
               <span
                 className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${accent.pillGlass}`}
@@ -414,15 +411,15 @@ function AdminInventoryCard({
             ) : null}
           </div>
           {it.price != null && Number.isFinite(it.price) ? (
-            <p className="mt-0.5 text-xs text-pink-200/75">
+            <p className="mt-0.5 text-xs text-bob-muted">
               <i className="fa-solid fa-tag mr-1 opacity-70" aria-hidden />
               ${it.price}
             </p>
           ) : null}
-          <p className={`mt-1 text-sm ${status.textClassDark}`}>{status.label}</p>
+          <p className={`mt-1 text-sm ${status.textClassOnCard}`}>{status.label}</p>
           <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             <div>
-              <dt className="text-pink-200/65">
+              <dt className="text-bob-muted">
                 <span className="inline-flex items-center gap-1">
                   <i
                     className="fa-solid fa-bullseye text-[0.7rem] opacity-70"
@@ -438,7 +435,7 @@ function AdminInventoryCard({
                   step={1}
                   key={`${it.id}-tgt-${it.targetQty}`}
                   defaultValue={it.targetQty}
-                  className="w-full min-w-0 max-w-[7rem] rounded-lg border border-white/20 bg-black/25 px-2 py-1 font-medium text-pink-50 shadow-sm backdrop-blur-sm focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-400/40"
+                  className="w-full min-w-0 max-w-[7rem] rounded-lg border border-bob-mist bg-white px-2 py-1 font-medium text-bob-ink shadow-sm focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/30"
                   aria-label={`Target goal for ${it.name}`}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
@@ -459,7 +456,7 @@ function AdminInventoryCard({
               </dd>
             </div>
             <div>
-              <dt className="text-pink-200/65">
+              <dt className="text-bob-muted">
                 <span className="inline-flex items-center gap-1">
                   <i
                     className="fa-solid fa-warehouse text-[0.7rem] opacity-70"
@@ -476,12 +473,12 @@ function AdminInventoryCard({
                   step={1}
                   key={`${it.id}-${it.onHand}`}
                   defaultValue={it.onHand}
-                  className={`w-full min-w-0 max-w-[7rem] rounded-lg border border-white/20 bg-black/25 px-2 py-1 font-medium shadow-sm backdrop-blur-sm focus:border-bob-pink focus:outline-none focus:ring-2 focus:ring-pink-400/40 ${
+                  className={`w-full min-w-0 max-w-[7rem] rounded-lg border border-bob-mist bg-white px-2 py-1 font-medium shadow-sm focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/30 ${
                     level === "out"
-                      ? "text-red-400"
+                      ? "text-red-700"
                       : level === "low"
-                        ? "text-amber-300"
-                        : "text-emerald-300"
+                        ? "text-amber-700"
+                        : "text-emerald-800"
                   }`}
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
@@ -502,7 +499,7 @@ function AdminInventoryCard({
               </dd>
             </div>
             <div>
-              <dt className="text-pink-200/65">
+              <dt className="text-bob-muted">
                 <span className="inline-flex items-center gap-1">
                   <i
                     className="fa-solid fa-chart-line text-[0.7rem] opacity-70"
@@ -511,7 +508,7 @@ function AdminInventoryCard({
                   Projected
                 </span>
               </dt>
-              <dd className="mt-0.5 font-medium text-pink-300">{it.projected}</dd>
+              <dd className="mt-0.5 font-medium text-bob-magenta">{it.projected}</dd>
             </div>
           </dl>
         </div>

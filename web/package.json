@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/dancing-script": "^5.2.8",
+    "@fontsource/montserrat": "^5.2.8",
+    "@fontsource/playfair-display": "^5.2.8",
     "@react-oauth/google": "^0.12.1",
     "@tanstack/react-query": "^5.62.8",
     "exceljs": "^4.4.0",
