@@ -37,6 +37,20 @@ export function Layout({
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
+  /** Safari mobile: lock documentElement height while the drawer is open (WebWise / apple.com-style burger fix). */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const el = document.documentElement;
+    const prevOverflow = el.style.overflow;
+    const prevHeight = el.style.height;
+    el.style.overflow = "hidden";
+    el.style.height = "100svh";
+    return () => {
+      el.style.overflow = prevOverflow;
+      el.style.height = prevHeight;
+    };
+  }, [menuOpen]);
+
   const iconNavBtn =
     "inline-flex h-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-bob-wood transition-colors hover:bg-bob-mist/80 sm:h-11 sm:min-h-0 sm:min-w-0 sm:p-2.5 sm:text-base";
 
@@ -51,7 +65,7 @@ export function Layout({
       <StaticPageBackground />
       <div className="layout-status-bar-fill" aria-hidden />
       <div
-        className={`relative z-10 flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col ${
+        className={`relative z-10 flex min-h-[100vh] min-h-[100svh] min-h-[100dvh] min-h-[-webkit-fill-available] flex-col ${
           showNav
             ? "pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
             : "pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
@@ -158,7 +172,7 @@ export function Layout({
                       Menu
                     </p>
                   </div>
-                  <div className="flex max-h-[min(65vh,calc(100dvh-6rem))] flex-col overflow-y-auto px-2 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                  <div className="flex max-h-[min(65svh,calc(100svh-6rem))] flex-col overflow-y-auto px-2 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                     <Link
                       to="/"
                       className="flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-3 text-base font-semibold text-bob-ink transition-colors active:bg-bob-mist/70 hover:bg-bob-cream"

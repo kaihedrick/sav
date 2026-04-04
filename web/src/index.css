@@ -10,6 +10,9 @@ html {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f6f1ea;
   min-height: 100%;
+  /* Safari mobile: svh = small viewport (visible UI); avoids 100vh larger-than-screen issue */
+  min-height: 100vh;
+  min-height: 100svh;
   min-height: -webkit-fill-available;
 }
 
@@ -17,6 +20,8 @@ body {
   margin: 0;
   @apply font-sans antialiased text-bob-ink;
   min-height: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
   background-color: #f6f1ea;
@@ -37,6 +42,8 @@ body {
   z-index: 0;
   isolation: isolate;
   min-height: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
   background-color: #f6f1ea;
@@ -44,15 +51,14 @@ body {
 
 @layer utilities {
   /**
-   * Full-screen fixed layer on iOS: plain inset-0 can leave gaps when the URL bar
-   * shows/hides. Combine dynamic + large viewport min-heights with -webkit-fill-available.
+   * Full-screen fixed layers: 100vh fallback, then 100svh (WWDC22; Safari mobile URL bar),
+   * then dvh + -webkit-fill-available. Order matters — later rules override in supporting browsers.
    */
   .fixed-cover-viewport {
     @apply fixed inset-0 w-full;
     min-height: 100vh;
+    min-height: 100svh;
     min-height: 100dvh;
-    min-height: 100lvh;
-    /* iOS Safari: last so it wins over vh/dvh when it matches the visible window */
     min-height: -webkit-fill-available;
   }
 

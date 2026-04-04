@@ -35,7 +35,7 @@ export function StaticPageBackground() {
       {/* Clip shader/blur inside full-bleed layer so safe-area + notch still get bg from parent */}
       <div className="absolute inset-0 overflow-hidden">
         {!reduceMotion ? (
-          <div className="absolute inset-0 h-full w-full min-h-[100dvh] min-h-[-webkit-fill-available] opacity-[0.45]">
+          <div className="absolute inset-0 h-full w-full min-h-[100vh] min-h-[100svh] min-h-[100dvh] min-h-[-webkit-fill-available] opacity-[0.45]">
             <Suspense fallback={null}>
               <Silk
                 speed={3.5}
