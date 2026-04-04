@@ -281,32 +281,9 @@ export async function handleRequest(
           origin,
         );
       }
-      const items = await repo.listItems();
-      const requests = await repo.listAllRequests();
-      const withStock = await Promise.all(
-        items.map(async (it) => {
-          const onHand = await repo.getStock(it.id);
-          const projected = projectedQtyForItem(it.id, requests);
-          return { ...it, onHand, projected };
-        }),
-      );
-      const sorted = sortItemsByPriority(withStock);
-      const values: (string | number)[][] = sorted.map((it) => {
-        const price =
-          it.price != null && Number.isFinite(it.price) ? it.price : "";
-        return [
-          it.id,
-          itemDisplayNameForExport(it.name, it.category),
-          it.category,
-          price,
-          it.onHand,
-          inventoryWebStatusLabel(it.onHand),
-          it.notes ?? "",
-          it.targetQty,
-          it.projected,
-        ];
-      });
+      let values: (string | number)[][];
       try {
+        values = await buildInventorySheetRows();
         await clearAndWriteInventoryRows(values);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -368,6 +345,7 @@ export async function handleRequest(
       };
       await repo.putItem(entity);
       await repo.setStock(id, 0);
+      await syncInventoryToGoogleSheetBestEffort();
       return json(201, entity, origin);
     }
 
@@ -430,6 +408,7 @@ export async function handleRequest(
           created++;
         }
       }
+      await syncInventoryToGoogleSheetBestEffort();
       return json(200, { created, updated, total: created + updated }, origin);
     }
 
@@ -455,6 +434,7 @@ export async function handleRequest(
         updatedAt: new Date().toISOString(),
       };
       await repo.putItem(updated);
+      await syncInventoryToGoogleSheetBestEffort();
       return json(200, updated, origin);
     }
 
@@ -462,6 +442,7 @@ export async function handleRequest(
       if (!admin) return json(403, { error: "Admin only" }, origin);
       const id = itemIdMatch[1];
       await repo.deleteItem(id);
+      await syncInventoryToGoogleSheetBestEffort();
       return json(200, { ok: true }, origin);
     }
 
@@ -472,6 +453,7 @@ export async function handleRequest(
       const body = JSON.parse(event.body || "{}");
       const p = z.object({ quantity: z.number().int().nonnegative() }).parse(body);
       await repo.setStock(id, p.quantity);
+      await syncInventoryToGoogleSheetBestEffort();
       return json(200, { itemId: id, quantity: p.quantity }, origin);
     }
 
@@ -528,6 +510,7 @@ export async function handleRequest(
         contributorEmail: r.userEmail,
         summary: summarizeLines(r.lines),
       });
+      await syncInventoryToGoogleSheetBestEffort();
       return json(201, r, origin);
     }
 
@@ -560,6 +543,7 @@ export async function handleRequest(
           summary: `Updated request: ${summarizeLines(toSave.lines)}`,
         });
       }
+      await syncInventoryToGoogleSheetBestEffort();
       return json(200, toSave, origin);
     }
 
@@ -571,6 +555,7 @@ export async function handleRequest(
         return json(403, { error: "Forbidden" }, origin);
       }
       await repo.deleteRequest(id);
+      await syncInventoryToGoogleSheetBestEffort();
       return json(200, { ok: true }, origin);
     }
 
@@ -590,6 +575,7 @@ export async function handleRequest(
         updatedAt: new Date().toISOString(),
       };
       await repo.putRequest(updated);
+      await syncInventoryToGoogleSheetBestEffort();
       return json(200, updated, origin);
     }
 
@@ -621,6 +607,7 @@ export async function handleRequest(
         await repo.putItem(entity);
         await repo.setStock(id, 5);
       }
+      await syncInventoryToGoogleSheetBestEffort();
       return json(201, { ok: true, count: samples.length }, origin);
     }
 
@@ -674,4 +661,46 @@ function summarizeLines(lines: { itemId: string; qty: number }[]): string {
 function csvEscape(s: string): string {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
+}
+
+/** Builds the same rows as the manual “Push to Google Sheet” admin action. */
+async function buildInventorySheetRows(): Promise<(string | number)[][]> {
+  const items = await repo.listItems();
+  const requests = await repo.listAllRequests();
+  const withStock = await Promise.all(
+    items.map(async (it) => {
+      const onHand = await repo.getStock(it.id);
+      const projected = projectedQtyForItem(it.id, requests);
+      return { ...it, onHand, projected };
+    }),
+  );
+  const sorted = sortItemsByPriority(withStock);
+  return sorted.map((it) => {
+    const price = it.price != null && Number.isFinite(it.price) ? it.price : "";
+    return [
+      it.id,
+      itemDisplayNameForExport(it.name, it.category),
+      it.category,
+      price,
+      it.onHand,
+      inventoryWebStatusLabel(it.onHand),
+      it.notes ?? "",
+      it.targetQty,
+      it.projected,
+    ];
+  });
+}
+
+/**
+ * Pushes inventory to Google Sheets when configured. Never throws — logs on failure
+ * so API mutations still succeed if Sheets is slow or misconfigured.
+ */
+async function syncInventoryToGoogleSheetBestEffort(): Promise<void> {
+  if (!isGoogleSheetsSyncEnabled()) return;
+  try {
+    const values = await buildInventorySheetRows();
+    await clearAndWriteInventoryRows(values);
+  } catch (e) {
+    console.error("[google-sheets] auto-sync failed:", e);
+  }
 }

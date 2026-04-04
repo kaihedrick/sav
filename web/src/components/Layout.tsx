@@ -66,7 +66,7 @@ export function Layout({
                 onClick={() => setMenuOpen(false)}
               />
             ) : null}
-            <header className="layout-header-chrome sticky top-0 z-20 overflow-visible border-b border-bob-mist bg-bob-cream/95 pt-[env(safe-area-inset-top,0px)] shadow-sm backdrop-blur-sm">
+            <header className="layout-header-chrome sticky top-0 z-20 overflow-visible border-b border-bob-mist/60 bg-bob-cream/45 pt-[env(safe-area-inset-top,0px)] shadow-[0_8px_32px_-12px_rgba(93,64,55,0.14)] backdrop-blur-xl backdrop-saturate-150">
               <div className="relative mx-auto max-w-3xl overflow-visible px-safe py-3 md:max-w-5xl">
                 <Link
                   to="/"
@@ -80,7 +80,7 @@ export function Layout({
                   <button
                     type="button"
                     className={`inline-flex h-10 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-bob-wood transition-colors hover:bg-bob-mist/80 sm:hidden ${
-                      menuOpen ? "bg-white shadow-md ring-2 ring-bob-gold/40" : ""
+                      menuOpen ? "bg-bob-cream shadow-md ring-2 ring-bob-gold/40" : ""
                     }`}
                     aria-expanded={menuOpen}
                     aria-controls="mobile-nav-menu"
@@ -146,7 +146,7 @@ export function Layout({
 
                 <div
                   id="mobile-nav-menu"
-                  className={`absolute left-2 right-2 top-full z-30 mt-1.5 overflow-hidden rounded-2xl border-2 border-bob-wood/15 bg-white shadow-2xl shadow-bob-wood/20 ring-1 ring-black/5 ${
+                  className={`absolute left-2 right-2 top-full z-30 mt-1.5 overflow-hidden rounded-2xl border-2 border-bob-wood/12 bg-bob-cream shadow-2xl shadow-bob-wood/18 ring-1 ring-bob-mist/50 ${
                     menuOpen ? "block sm:hidden" : "hidden"
                   }`}
                   role="navigation"

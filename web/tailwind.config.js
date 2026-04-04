@@ -5,15 +5,18 @@ export default {
     extend: {
       colors: {
         bob: {
-          cream: "#F8F6F2",
-          mist: "#EBE4DC",
-          card: "#EADBD1",
+          /** Flyer: pale warm page (off-white cream, not gray) */
+          cream: "#F6F1EA",
+          /** Muted beige brushstroke / secondary ground */
+          mist: "#E5D9CF",
+          /** Flyer card bands — warm sandy beige */
+          card: "#E9E0D6",
           ink: "#222222",
           muted: "#6B5E5A",
           wood: "#5D4037",
           gold: "#C5A059",
           "gold-dark": "#A67C32",
-          peach: "#F5E1D2",
+          peach: "#EDDED4",
           rose: "#D88A8A",
           magenta: "#E91E63",
           coral: "#FF5722",

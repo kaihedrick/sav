@@ -7,7 +7,7 @@ html {
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8f6f2;
+  background-color: #f6f1ea;
   min-height: 100%;
 }
 
@@ -15,7 +15,7 @@ body {
   @apply font-sans antialiased text-bob-ink;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
-  background-color: #f8f6f2;
+  background-color: #f6f1ea;
 }
 
 @layer base {
@@ -70,16 +70,16 @@ body {
   }
 
   .surface-glass {
-    @apply rounded-2xl border border-bob-mist bg-white/85 shadow-md shadow-bob-wood/10 backdrop-blur-sm;
+    @apply rounded-2xl border border-bob-mist/90 bg-bob-cream/95 shadow-md shadow-bob-wood/10 backdrop-blur-sm;
   }
   .surface-glass-modal {
-    @apply rounded-2xl border border-bob-mist bg-white/95 shadow-xl shadow-bob-wood/15 backdrop-blur-sm;
+    @apply rounded-2xl border border-bob-mist/90 bg-bob-cream/95 shadow-xl shadow-bob-wood/15 backdrop-blur-sm;
   }
   .surface-glass-auth {
-    @apply rounded-3xl border border-bob-mist bg-white/95 shadow-lg shadow-bob-wood/10 backdrop-blur-sm;
+    @apply rounded-3xl border border-bob-mist/90 bg-bob-cream/95 shadow-lg shadow-bob-wood/10 backdrop-blur-sm;
   }
   .surface-glass-btn {
-    @apply rounded-full border border-bob-mist bg-white/90 text-bob-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-bob-peach/50 hover:border-bob-gold/40;
+    @apply rounded-full border border-bob-mist/90 bg-bob-card/60 text-bob-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-bob-peach/70 hover:border-bob-gold/40;
   }
 }
 
