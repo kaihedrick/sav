@@ -92,13 +92,16 @@ body {
   }
 
   /**
-   * Portaled dim layer — same viewport height stack as page (Safari + keyboard).
-   * `inset-0` + min-heights so the scrim fills the visible screen when UI chrome changes.
+   * Full-bleed portaled scrim: layout height to the physical bottom (lvh/svh/dvh stack),
+   * not visualViewport-sized — pairs with `interactive-widget=overlays-content` so the
+   * keyboard overlays the page instead of shrinking layout (dim can extend past / behind it).
    */
   .modal-backdrop {
     @apply fixed inset-0 z-[50] flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 sm:items-center;
+    width: 100%;
     min-height: 100vh;
     min-height: 100svh;
+    min-height: 100lvh;
     min-height: 100dvh;
     min-height: -webkit-fill-available;
     padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
