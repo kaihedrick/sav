@@ -61,7 +61,7 @@ export function Layout({
             {menuOpen ? (
               <button
                 type="button"
-                className="fixed inset-0 z-[19] bg-bob-ink/25 backdrop-blur-[2px] sm:hidden"
+                className="fixed inset-0 z-[19] bg-bob-ink/50 backdrop-blur-sm sm:hidden"
                 aria-label="Close menu"
                 onClick={() => setMenuOpen(false)}
               />
@@ -79,7 +79,9 @@ export function Layout({
                 <div className="relative z-20 flex min-h-[44px] w-full items-center justify-end gap-1.5 font-sans">
                   <button
                     type="button"
-                    className="inline-flex h-10 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-bob-wood transition-colors hover:bg-bob-mist/80 sm:hidden"
+                    className={`inline-flex h-10 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-bob-wood transition-colors hover:bg-bob-mist/80 sm:hidden ${
+                      menuOpen ? "bg-white shadow-md ring-2 ring-bob-gold/40" : ""
+                    }`}
                     aria-expanded={menuOpen}
                     aria-controls="mobile-nav-menu"
                     aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
@@ -144,19 +146,26 @@ export function Layout({
 
                 <div
                   id="mobile-nav-menu"
-                  className={`absolute left-0 right-0 top-full z-30 border-b border-bob-mist bg-bob-cream/98 shadow-md backdrop-blur-sm ${
+                  className={`absolute left-2 right-2 top-full z-30 mt-1.5 overflow-hidden rounded-2xl border-2 border-bob-wood/15 bg-white shadow-2xl shadow-bob-wood/20 ring-1 ring-black/5 ${
                     menuOpen ? "block sm:hidden" : "hidden"
                   }`}
                   role="navigation"
                   aria-label="Main"
                 >
-                  <div className="flex max-h-[min(70vh,calc(100dvh-5rem))] flex-col overflow-y-auto px-safe pb-[env(safe-area-inset-bottom,8px)] pt-1">
+                  <div className="border-b border-bob-mist/80 bg-bob-peach/30 px-4 py-2.5">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-bob-wood/90">
+                      Menu
+                    </p>
+                  </div>
+                  <div className="flex max-h-[min(65vh,calc(100dvh-6rem))] flex-col overflow-y-auto px-2 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                     <Link
                       to="/"
-                      className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-bob-ink transition-colors hover:bg-bob-mist/60"
+                      className="flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-3 text-base font-semibold text-bob-ink transition-colors active:bg-bob-mist/70 hover:bg-bob-cream"
                       onClick={() => setMenuOpen(false)}
                     >
-                      <i className="fa-solid fa-house w-5 text-center text-bob-gold" aria-hidden />
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bob-gold/15 text-bob-gold">
+                        <i className="fa-solid fa-house" aria-hidden />
+                      </span>
                       Home
                     </Link>
                     {liveSheet.data?.url ? (
@@ -164,10 +173,12 @@ export function Layout({
                         href={liveSheet.data.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-bob-ink transition-colors hover:bg-bob-mist/60"
+                        className="flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-3 text-base font-semibold text-bob-ink transition-colors active:bg-bob-mist/70 hover:bg-bob-cream"
                         onClick={() => setMenuOpen(false)}
                       >
-                        <i className="fa-solid fa-table w-5 text-center text-bob-gold" aria-hidden />
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bob-gold/15 text-bob-gold">
+                          <i className="fa-solid fa-table" aria-hidden />
+                        </span>
                         Shared sheet
                       </a>
                     ) : null}
@@ -175,31 +186,35 @@ export function Layout({
                       <>
                         <Link
                           to="/admin"
-                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-bob-ink transition-colors hover:bg-bob-mist/60"
+                          className="flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-3 text-base font-semibold text-bob-ink transition-colors active:bg-bob-mist/70 hover:bg-bob-cream"
                           onClick={() => setMenuOpen(false)}
                         >
-                          <i
-                            className="fa-solid fa-screwdriver-wrench w-5 text-center text-bob-gold"
-                            aria-hidden
-                          />
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bob-gold/15 text-bob-gold">
+                            <i className="fa-solid fa-screwdriver-wrench" aria-hidden />
+                          </span>
                           Admin
                         </Link>
                         <Link
                           to="/admin/requests"
-                          className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-bob-ink transition-colors hover:bg-bob-mist/60"
+                          className="flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-3 text-base font-semibold text-bob-ink transition-colors active:bg-bob-mist/70 hover:bg-bob-cream"
                           onClick={() => setMenuOpen(false)}
                         >
-                          <i className="fa-solid fa-inbox w-5 text-center text-bob-gold" aria-hidden />
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bob-gold/15 text-bob-gold">
+                            <i className="fa-solid fa-inbox" aria-hidden />
+                          </span>
                           Request inbox
                         </Link>
                       </>
                     )}
+                    <div className="my-1 border-t border-bob-mist" />
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-bob-muted transition-colors hover:bg-bob-mist/60"
+                      className="flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-base font-semibold text-bob-wood transition-colors active:bg-rose-50 hover:bg-rose-50/80"
                       onClick={signOut}
                     >
-                      <i className="fa-solid fa-right-from-bracket w-5 text-center" aria-hidden />
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+                        <i className="fa-solid fa-right-from-bracket" aria-hidden />
+                      </span>
                       Sign out
                     </button>
                   </div>
