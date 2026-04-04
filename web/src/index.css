@@ -75,6 +75,19 @@ body {
   .surface-glass-modal {
     @apply rounded-2xl border border-bob-mist/90 bg-bob-cream/95 shadow-xl shadow-bob-wood/15 backdrop-blur-sm;
   }
+
+  /**
+   * Glass panel without shadow — use inside `.surface-glass-modal-shell`.
+   * WebKit clips `box-shadow` on the same element as `backdrop-filter`; splitting layers fixes it.
+   */
+  .surface-glass-modal-panel {
+    @apply rounded-2xl border border-bob-mist/90 bg-bob-cream/95 backdrop-blur-sm;
+  }
+
+  /** Shadow-only wrapper; no backdrop-blur so Safari paints the full drop shadow. */
+  .surface-glass-modal-shell {
+    @apply rounded-2xl shadow-xl shadow-bob-wood/15;
+  }
   .surface-glass-auth {
     @apply rounded-3xl border border-bob-mist/90 bg-bob-cream/95 shadow-lg shadow-bob-wood/10 backdrop-blur-sm;
   }

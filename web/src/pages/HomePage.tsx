@@ -271,9 +271,10 @@ export function HomePage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="quick-order-title"
-            className="surface-glass-modal relative isolate w-full max-w-md transform-gpu p-5"
+            className="surface-glass-modal-shell w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="surface-glass-modal-panel relative p-5">
             <div className="relative z-10">
             <h2
               id="quick-order-title"
@@ -342,6 +343,7 @@ export function HomePage() {
                 {(quickCommit.error as Error).message}
               </p>
             )}
+            </div>
             </div>
           </div>
         </div>,
