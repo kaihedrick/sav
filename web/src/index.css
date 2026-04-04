@@ -91,9 +91,16 @@ body {
     background-color: #f6f1ea;
   }
 
-  /** Portaled modal shell: safe-area insets + dim; pair with createPortal(..., document.body). */
+  /**
+   * Portaled dim layer — same viewport height stack as page (Safari + keyboard).
+   * `inset-0` + min-heights so the scrim fills the visible screen when UI chrome changes.
+   */
   .modal-backdrop {
     @apply fixed inset-0 z-[50] flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 sm:items-center;
+    min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
     padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
       max(2.75rem, calc(env(safe-area-inset-bottom, 0px) + 2rem)) max(1rem, env(safe-area-inset-left, 0px));
   }
@@ -119,22 +126,11 @@ body {
   }
 
   /**
-   * Glass panel without shadow — use inside `.surface-glass-modal-shell`.
-   * WebKit clips `box-shadow` on the same element as `backdrop-filter`; splitting layers fixes it.
+   * Quick-order dialog: same shadow + ring as `inventoryGlassCardClass` (opaque fill, no backdrop-blur),
+   * so box-shadow matches list cards when portaled over the dim layer + keyboard.
    */
-  .surface-glass-modal-panel {
-    @apply rounded-2xl border border-bob-mist/90 bg-bob-cream/95 backdrop-blur-sm;
-  }
-
-  /**
-   * Outer wrapper for the quick-order card: use CSS filter drop-shadow (not box-shadow).
-   * WebKit still clips some box-shadows next to backdrop-filter / portaled layers; drop-shadow
-   * compositing matches the visible panel better on iOS.
-   */
-  .surface-glass-modal-shell {
-    @apply rounded-2xl;
-    box-shadow: none;
-    filter: drop-shadow(0 20px 38px rgba(93, 64, 55, 0.2)) drop-shadow(0 8px 14px rgba(93, 64, 55, 0.12));
+  .quick-order-dialog {
+    @apply relative isolate w-full rounded-2xl border border-bob-mist/90 bg-bob-cream p-5 text-left shadow-md shadow-bob-wood/10 ring-1 ring-bob-mist/40;
   }
 
   .surface-glass-auth {

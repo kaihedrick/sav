@@ -260,11 +260,9 @@ export function HomePage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="quick-order-title"
-              className="surface-glass-modal-shell w-full max-w-md"
+              className="quick-order-dialog max-w-md"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="surface-glass-modal-panel relative p-5">
-                <div className="relative z-10">
                   <h2
                     id="quick-order-title"
                     className="flex items-center gap-2 text-lg font-semibold text-bob-ink"
@@ -332,8 +330,6 @@ export function HomePage() {
                       {(quickCommit.error as Error).message}
                     </p>
                   )}
-                </div>
-              </div>
             </div>
           </div>,
           document.body,
