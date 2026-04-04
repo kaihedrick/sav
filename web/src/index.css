@@ -44,8 +44,9 @@ body {
     @apply fixed inset-0 w-full;
     min-height: 100vh;
     min-height: 100dvh;
-    min-height: -webkit-fill-available;
     min-height: 100lvh;
+    /* iOS Safari: last so it wins over vh/dvh when it matches the visible window */
+    min-height: -webkit-fill-available;
   }
 
   .px-safe {

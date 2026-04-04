@@ -266,16 +266,28 @@ export function HomePage() {
                 <span className="sr-only">Quantity</span>
                 <input
                   type="number"
-                  min={1}
+                  min={0}
+                  inputMode="numeric"
                   autoFocus
                   className="w-24 rounded-xl border border-neutral-200 px-3 py-2.5 text-base text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/30"
-                  value={quickQty}
-                  onChange={(e) =>
-                    setQuickQty(Math.max(1, Number(e.target.value) || 1))
-                  }
+                  value={quickQty < 1 ? "" : quickQty}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "") {
+                      setQuickQty(0);
+                      return;
+                    }
+                    const n = Number(v);
+                    if (!Number.isFinite(n)) return;
+                    setQuickQty(n);
+                  }}
+                  onBlur={() => {
+                    if (quickQty < 1) setQuickQty(1);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
+                      if (quickQty < 1 || quickCommit.isPending) return;
                       quickCommit.mutate({
                         itemId: quickOrderItem.id,
                         qty: quickQty,
@@ -343,16 +355,29 @@ export function HomePage() {
               </select>
               <input
                 type="number"
-                min={1}
+                min={0}
+                inputMode="numeric"
                 className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25 sm:w-24"
-                value={row.qty}
+                value={row.qty < 1 ? "" : row.qty}
                 onChange={(e) => {
+                  const v = e.target.value;
                   const next = [...lines];
-                  next[idx] = {
-                    ...next[idx],
-                    qty: Math.max(1, Number(e.target.value) || 1),
-                  };
+                  if (v === "") {
+                    next[idx] = { ...next[idx], qty: 0 };
+                    setLines(next);
+                    return;
+                  }
+                  const n = Number(v);
+                  if (!Number.isFinite(n)) return;
+                  next[idx] = { ...next[idx], qty: n };
                   setLines(next);
+                }}
+                onBlur={() => {
+                  const next = [...lines];
+                  if (next[idx].qty < 1) {
+                    next[idx] = { ...next[idx], qty: 1 };
+                    setLines(next);
+                  }
                 }}
               />
               {lines.length > 1 && (
