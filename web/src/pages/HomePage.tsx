@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "../components/Layout";
 import { apiJson, apiFetch } from "../lib/api";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { getIdToken } from "../lib/tokens";
 import { isAdminFromToken } from "../lib/sessionJwt";
 import {
@@ -140,8 +141,9 @@ export function HomePage() {
       }
     : undefined;
 
+  /** Extra bottom space so `shadow-xl` clears iOS WebKit’s clip at the input-accessory / keyboard seam (esp. iOS 18+). */
   const quickOrderOverlayClass =
-    "flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] sm:items-center " +
+    "flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2.75rem,calc(env(safe-area-inset-bottom)+1.75rem))] sm:items-center " +
     (quickOrderOverlayStyle ? "" : "fixed-cover-viewport z-50 ");
 
   const quickCommit = useMutation({
@@ -257,18 +259,19 @@ export function HomePage() {
         })}
       </section>
 
-      {quickOrderItem && (
-        <div
-          className={quickOrderOverlayClass}
-          style={quickOrderOverlayStyle}
-          role="presentation"
-          onClick={() => setQuickOrderItem(null)}
-        >
+      {quickOrderItem &&
+        createPortal(
+          <div
+            className={quickOrderOverlayClass}
+            style={quickOrderOverlayStyle}
+            role="presentation"
+            onClick={() => setQuickOrderItem(null)}
+          >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="quick-order-title"
-            className="surface-glass-modal relative isolate mb-1 w-full max-w-md p-5"
+            className="surface-glass-modal relative isolate w-full max-w-md transform-gpu p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative z-10">
@@ -341,8 +344,9 @@ export function HomePage() {
             )}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
 
       <section className="surface-glass relative isolate mt-10 overflow-hidden p-4 md:p-6">
         <div className="relative z-10">
