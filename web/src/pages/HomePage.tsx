@@ -14,6 +14,7 @@ import {
 } from "../lib/inventoryCardStyle";
 import { IconButton } from "../components/IconButton";
 import { useVisualViewportRect } from "../lib/useVisualViewportRect";
+import { useVirtualKeyboardOpen } from "../lib/useVirtualKeyboardOpen";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "";
 
@@ -120,6 +121,7 @@ export function HomePage() {
   }, [quickOrderItem]);
 
   const quickOrderVv = useVisualViewportRect(!!quickOrderItem);
+  const quickOrderKeyboardOpen = useVirtualKeyboardOpen(!!quickOrderItem);
 
   useEffect(() => {
     if (!quickOrderItem) return;
@@ -274,7 +276,13 @@ export function HomePage() {
             className="surface-glass-modal-shell w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="surface-glass-modal-panel relative p-5">
+            <div
+              className={
+                quickOrderKeyboardOpen
+                  ? "surface-glass-modal-panel-solid relative p-5"
+                  : "surface-glass-modal-panel relative p-5"
+              }
+            >
             <div className="relative z-10">
             <h2
               id="quick-order-title"
