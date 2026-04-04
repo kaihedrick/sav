@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "../components/Layout";
 import { apiJson, apiFetch } from "../lib/api";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { getIdToken } from "../lib/tokens";
 import { isAdminFromToken } from "../lib/sessionJwt";
 import {
@@ -126,6 +127,15 @@ export function HomePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [quickOrderItem]);
 
+  useEffect(() => {
+    if (!quickOrderItem) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [quickOrderItem]);
+
   const quickCommit = useMutation({
     mutationFn: (payload: { itemId: string; qty: number }) =>
       apiJson("/requests", {
@@ -239,93 +249,95 @@ export function HomePage() {
         })}
       </section>
 
-      {quickOrderItem && (
-        <div
-          className="fixed-cover-viewport z-50 flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,calc(env(safe-area-inset-bottom)+1.25rem))] sm:items-center"
-          role="presentation"
-          onClick={() => setQuickOrderItem(null)}
-        >
+      {quickOrderItem &&
+        createPortal(
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="quick-order-title"
-            className="surface-glass-modal-shell w-full max-w-md"
-            onClick={(e) => e.stopPropagation()}
+            className="modal-backdrop"
+            role="presentation"
+            onClick={() => setQuickOrderItem(null)}
           >
-            <div className="surface-glass-modal-panel relative p-5">
-            <div className="relative z-10">
-            <h2
-              id="quick-order-title"
-              className="flex items-center gap-2 text-lg font-semibold text-bob-ink"
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="quick-order-title"
+              className="surface-glass-modal-shell w-full max-w-md"
+              onClick={(e) => e.stopPropagation()}
             >
-              <i className="fa-solid fa-hand-holding-heart text-bob-gold" aria-hidden />
-              {quickOrderItem.name}
-            </h2>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-bob-muted">
-                <i className="fa-solid fa-hashtag text-bob-gold/80" title="Qty" aria-hidden />
-                <span className="sr-only">Quantity</span>
-                <input
-                  type="number"
-                  min={0}
-                  inputMode="numeric"
-                  autoFocus
-                  className="w-24 rounded-xl border border-neutral-200 px-3 py-2.5 text-base text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/30"
-                  value={quickQty < 1 ? "" : quickQty}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "") {
-                      setQuickQty(0);
-                      return;
-                    }
-                    const n = Number(v);
-                    if (!Number.isFinite(n)) return;
-                    setQuickQty(n);
-                  }}
-                  onBlur={() => {
-                    if (quickQty < 1) setQuickQty(1);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (quickQty < 1 || quickCommit.isPending) return;
-                      quickCommit.mutate({
-                        itemId: quickOrderItem.id,
-                        qty: quickQty,
-                      });
-                    }
-                  }}
-                />
-              </label>
-              <IconButton
-                icon="fa-check"
-                label={quickCommit.isPending ? "Sending" : "Submit"}
-                disabled={quickCommit.isPending || quickQty < 1}
-                onClick={() =>
-                  quickCommit.mutate({
-                    itemId: quickOrderItem.id,
-                    qty: quickQty,
-                  })
-                }
-                className="h-11 w-11 rounded-full bg-bob-gold text-white shadow-md transition-colors hover:bg-bob-gold-dark disabled:opacity-50"
-              />
-              <IconButton
-                icon="fa-xmark"
-                label="Close"
-                onClick={() => setQuickOrderItem(null)}
-                className="h-11 w-11 rounded-full border border-bob-mist bg-white text-bob-muted shadow-sm hover:bg-bob-mist/60"
-              />
+              <div className="surface-glass-modal-panel relative p-5">
+                <div className="relative z-10">
+                  <h2
+                    id="quick-order-title"
+                    className="flex items-center gap-2 text-lg font-semibold text-bob-ink"
+                  >
+                    <i className="fa-solid fa-hand-holding-heart text-bob-gold" aria-hidden />
+                    {quickOrderItem.name}
+                  </h2>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2 text-bob-muted">
+                      <i className="fa-solid fa-hashtag text-bob-gold/80" title="Qty" aria-hidden />
+                      <span className="sr-only">Quantity</span>
+                      <input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        autoFocus
+                        className="w-24 rounded-xl border border-neutral-200 px-3 py-2.5 text-base text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/30"
+                        value={quickQty < 1 ? "" : quickQty}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === "") {
+                            setQuickQty(0);
+                            return;
+                          }
+                          const n = Number(v);
+                          if (!Number.isFinite(n)) return;
+                          setQuickQty(n);
+                        }}
+                        onBlur={() => {
+                          if (quickQty < 1) setQuickQty(1);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (quickQty < 1 || quickCommit.isPending) return;
+                            quickCommit.mutate({
+                              itemId: quickOrderItem.id,
+                              qty: quickQty,
+                            });
+                          }
+                        }}
+                      />
+                    </label>
+                    <IconButton
+                      icon="fa-check"
+                      label={quickCommit.isPending ? "Sending" : "Submit"}
+                      disabled={quickCommit.isPending || quickQty < 1}
+                      onClick={() =>
+                        quickCommit.mutate({
+                          itemId: quickOrderItem.id,
+                          qty: quickQty,
+                        })
+                      }
+                      className="h-11 w-11 rounded-full bg-bob-gold text-white shadow-md transition-colors hover:bg-bob-gold-dark disabled:opacity-50"
+                    />
+                    <IconButton
+                      icon="fa-xmark"
+                      label="Close"
+                      onClick={() => setQuickOrderItem(null)}
+                      className="h-11 w-11 rounded-full border border-bob-mist bg-white text-bob-muted shadow-sm hover:bg-bob-mist/60"
+                    />
+                  </div>
+                  {quickCommit.isError && (
+                    <p className="mt-3 text-sm text-red-700">
+                      {(quickCommit.error as Error).message}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
-            {quickCommit.isError && (
-              <p className="mt-3 text-sm text-red-700">
-                {(quickCommit.error as Error).message}
-              </p>
-            )}
-            </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       <section className="surface-glass relative isolate mt-10 overflow-hidden p-4 md:p-6">
         <div className="relative z-10">

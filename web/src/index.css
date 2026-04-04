@@ -3,18 +3,20 @@
 @tailwind utilities;
 
 html {
+  margin: 0;
   -webkit-tap-highlight-color: transparent;
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f6f1ea;
-  /* Fill the screen with viewport-fit=cover (iOS); pairs with env(safe-area-inset-*). */
   min-height: 100%;
   min-height: -webkit-fill-available;
 }
 
 body {
+  margin: 0;
   @apply font-sans antialiased text-bob-ink;
+  min-height: 100%;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
   background-color: #f6f1ea;
@@ -30,11 +32,14 @@ body {
 }
 
 #root {
+  margin: 0;
   position: relative;
   z-index: 0;
   isolation: isolate;
+  min-height: 100%;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
+  background-color: #f6f1ea;
 }
 
 @layer utilities {
@@ -67,6 +72,26 @@ body {
 }
 
 @layer components {
+  /**
+   * Persistent underlay outside #root — mitigates iOS Safari gaps / white bands with
+   * fixed overlays (see WebKit reports on visualViewport + fixed/sticky on iOS 26).
+   */
+  .safari-page-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    margin: 0;
+    pointer-events: none;
+    background-color: #f6f1ea;
+  }
+
+  /** Portaled modal shell: safe-area insets + dim; pair with createPortal(..., document.body). */
+  .modal-backdrop {
+    @apply fixed inset-0 z-[50] flex items-end justify-center overflow-visible overscroll-none bg-bob-ink/40 sm:items-center;
+    padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
+      max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem)) max(1rem, env(safe-area-inset-left, 0px));
+  }
+
   .layout-header-chrome {
     @apply text-bob-ink;
   }
