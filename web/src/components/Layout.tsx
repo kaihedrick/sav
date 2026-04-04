@@ -49,6 +49,7 @@ export function Layout({
   return (
     <>
       <StaticPageBackground />
+      <div className="layout-status-bar-fill" aria-hidden />
       <div
         className={`relative z-10 flex min-h-[100dvh] min-h-[-webkit-fill-available] flex-col ${
           showNav

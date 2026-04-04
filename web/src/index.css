@@ -8,7 +8,9 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f6f1ea;
+  /* Fill the screen with viewport-fit=cover (iOS); pairs with env(safe-area-inset-*). */
   min-height: 100%;
+  min-height: -webkit-fill-available;
 }
 
 body {
@@ -67,6 +69,15 @@ body {
 @layer components {
   .layout-header-chrome {
     @apply text-bob-ink;
+  }
+
+  /**
+   * Status bar / notch region: same frosted tint as the header so WebKit shows it
+   * behind the clock & battery (backdrop on the header alone often skips this band).
+   */
+  .layout-status-bar-fill {
+    @apply pointer-events-none fixed left-0 right-0 top-0 z-[19] bg-bob-cream/45 backdrop-blur-xl backdrop-saturate-150;
+    height: env(safe-area-inset-top, 0px);
   }
 
   .surface-glass {
