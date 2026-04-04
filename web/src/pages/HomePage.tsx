@@ -241,7 +241,7 @@ export function HomePage() {
 
       {quickOrderItem && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-bob-ink/40 p-4 sm:items-center"
+          className="fixed-cover-viewport z-50 flex items-end justify-center bg-bob-ink/40 p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
           role="presentation"
           onClick={() => setQuickOrderItem(null)}
         >

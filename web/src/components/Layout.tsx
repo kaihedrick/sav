@@ -61,7 +61,7 @@ export function Layout({
             {menuOpen ? (
               <button
                 type="button"
-                className="fixed inset-0 z-[19] bg-bob-ink/50 backdrop-blur-sm sm:hidden"
+                className="fixed-cover-viewport z-[19] bg-bob-ink/50 backdrop-blur-sm sm:hidden"
                 aria-label="Close menu"
                 onClick={() => setMenuOpen(false)}
               />

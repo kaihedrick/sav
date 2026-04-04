@@ -36,6 +36,18 @@ body {
 }
 
 @layer utilities {
+  /**
+   * Full-screen fixed layer on iOS: plain inset-0 can leave gaps when the URL bar
+   * shows/hides. Combine dynamic + large viewport min-heights with -webkit-fill-available.
+   */
+  .fixed-cover-viewport {
+    @apply fixed inset-0 w-full;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+    min-height: 100lvh;
+  }
+
   .px-safe {
     padding-left: max(1rem, env(safe-area-inset-left, 0px));
     padding-right: max(1rem, env(safe-area-inset-right, 0px));
