@@ -11,7 +11,7 @@ import {
   type InventoryExportRow,
 } from "../lib/inventoryExcel";
 import { saveInventoryExportTemplate } from "../lib/inventoryExportTemplateStorage";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   categoryAccent,
@@ -20,6 +20,15 @@ import {
   stockLevelFromOnHand,
   stockStatusClasses,
 } from "../lib/inventoryCardStyle";
+
+function onUnsignedIntInputChange(
+  set: (v: string) => void,
+): (e: ChangeEvent<HTMLInputElement>) => void {
+  return (e) => {
+    const v = e.target.value;
+    if (v === "" || /^\d*$/.test(v)) set(v);
+  };
+}
 
 type InvItem = {
   id: string;
@@ -32,8 +41,21 @@ type InvItem = {
   projected: number;
 };
 
+type SheetSyncBody = {
+  googleSheetSync?: "ok" | "skipped" | "error";
+  googleSheetSyncError?: string;
+};
+
+function sheetSyncAlert(data: SheetSyncBody): string | null {
+  if (data.googleSheetSync === "error" && data.googleSheetSyncError?.trim()) {
+    return data.googleSheetSyncError;
+  }
+  return null;
+}
+
 export function AdminDashboard() {
   const qc = useQueryClient();
+
   const inv = useQuery({
     queryKey: ["inventory"],
     queryFn: () => apiJson<{ items: InvItem[] }>("/inventory"),
@@ -41,66 +63,102 @@ export function AdminDashboard() {
 
   const liveSheet = useQuery({
     queryKey: ["inventory-sheet"],
-    queryFn: () => apiJson<{ url: string | null }>("/inventory/sheet"),
+    queryFn: () =>
+      apiJson<{ url: string | null; syncEnabled: boolean }>("/inventory/sheet"),
   });
 
   const [name, setName] = useState("");
-  const [targetQty, setTargetQty] = useState(0);
+  const [targetQtyInput, setTargetQtyInput] = useState("0");
   const [category, setCategory] = useState("");
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importErr, setImportErr] = useState<string | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
+  const [sheetSyncPending, setSheetSyncPending] = useState(false);
+  const [editItem, setEditItem] = useState<InvItem | null>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
 
+  /** Full sheet rewrite (same as POST /admin/inventory/sync-google-sheet). Backs up inline API sync. */
+  async function pushLiveGoogleSheet(): Promise<{ rowCount: number } | undefined> {
+    try {
+      const res = await apiJson<{ ok: boolean; rowCount: number }>(
+        "/admin/inventory/sync-google-sheet",
+        { method: "POST" },
+      );
+      setImportErr(null);
+      await qc.invalidateQueries({ queryKey: ["inventory-sheet"] });
+      return { rowCount: res.rowCount };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Request failed";
+      setImportErr(`Google Sheet sync: ${msg}`);
+      return undefined;
+    }
+  }
+
+  async function manualSyncGoogleSheet() {
+    setImportMsg(null);
+    setSheetSyncPending(true);
+    try {
+      const r = await pushLiveGoogleSheet();
+      if (r) {
+        setImportMsg(`Google Sheet synced (${r.rowCount} rows).`);
+      }
+    } finally {
+      setSheetSyncPending(false);
+    }
+  }
+
   const createItem = useMutation({
-    mutationFn: () =>
-      apiJson("/items", {
+    mutationFn: () => {
+      const raw = targetQtyInput.trim();
+      const targetQty =
+        raw === "" ? 0 : Math.max(0, Math.floor(Number(raw)));
+      return apiJson("/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, category, targetQty }),
-      }),
-    onSuccess: () => {
+      });
+    },
+    onSuccess: async () => {
       qc.invalidateQueries({ queryKey: ["inventory"] });
       setName("");
       setCategory("");
-      setTargetQty(0);
-    },
-  });
-
-  const syncGoogleSheet = useMutation({
-    mutationFn: () =>
-      apiJson<{ ok: boolean; rowCount: number }>(
-        "/admin/inventory/sync-google-sheet",
-        { method: "POST" },
-      ),
-    onSuccess: (data) => {
-      setImportMsg(`Sheet updated · ${data.rowCount} rows`);
-      setImportErr(null);
-    },
-    onError: (e) => {
-      const msg = e instanceof Error ? e.message : "Sync failed";
-      setImportErr(msg);
-      setImportMsg(null);
+      setTargetQtyInput("0");
+      await pushLiveGoogleSheet();
     },
   });
 
   const importExcel = useMutation({
     mutationFn: (items: ParsedInventoryRow[]) =>
-      apiJson<{ created: number; updated: number; total: number }>(
+      apiJson<{
+        created: number;
+        updated: number;
+        total: number;
+        replaceAll?: boolean;
+        deletedBefore?: number;
+      }>(
         "/admin/items/import",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items }),
+          body: JSON.stringify({ items, replaceAll: true }),
         },
       ),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       qc.invalidateQueries({ queryKey: ["inventory"] });
-      setImportMsg(
-        `Import · ${data.created} new, ${data.updated} updated (${data.total} rows)`,
-      );
-      setImportErr(null);
+      const syncErr = sheetSyncAlert(data as SheetSyncBody);
+      if (syncErr) {
+        setImportErr(`Saved inventory, but Google Sheet sync failed: ${syncErr}`);
+        setImportMsg(null);
+      } else {
+        setImportMsg(
+          data.replaceAll
+            ? `Import · Catalog replaced (${data.deletedBefore ?? 0} previous items removed, ${data.created} imported)`
+            : `Import · ${data.created} new, ${data.updated} updated (${data.total} rows)`,
+        );
+        setImportErr(null);
+      }
       if (excelInputRef.current) excelInputRef.current.value = "";
+      await pushLiveGoogleSheet();
     },
     onError: (e) => {
       const msg = e instanceof Error ? e.message : "Import failed";
@@ -114,21 +172,82 @@ export function AdminDashboard() {
   });
 
   const setStock = async (itemId: string, quantity: number) => {
-    await apiFetch(`/items/${itemId}/stock`, {
+    const res = await apiFetch(`/items/${itemId}/stock`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quantity }),
     });
-    qc.invalidateQueries({ queryKey: ["inventory"] });
+    const body = (await res.json().catch(() => ({}))) as SheetSyncBody & {
+      error?: string;
+    };
+    if (!res.ok) {
+      setImportErr(body.error ?? `HTTP ${res.status}`);
+      setImportMsg(null);
+      return;
+    }
+    const syncErr = sheetSyncAlert(body);
+    if (syncErr) {
+      setImportErr(`Google Sheet did not update: ${syncErr}`);
+      setImportMsg(null);
+    } else {
+      setImportErr(null);
+    }
+    await qc.invalidateQueries({ queryKey: ["inventory"] });
+    await qc.invalidateQueries({ queryKey: ["inventory-sheet"] });
   };
 
-  const patchItem = async (itemId: string, patch: { targetQty: number }) => {
-    await apiJson(`/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    qc.invalidateQueries({ queryKey: ["inventory"] });
+  const patchItem = async (
+    itemId: string,
+    patch: { name?: string; category?: string; targetQty?: number },
+  ) => {
+    const body = await apiJson<Record<string, unknown> & SheetSyncBody>(
+      `/items/${itemId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      },
+    );
+    const syncErr = sheetSyncAlert(body);
+    if (syncErr) {
+      setImportErr(`Google Sheet did not update: ${syncErr}`);
+      setImportMsg(null);
+    } else {
+      setImportErr(null);
+    }
+    await qc.invalidateQueries({ queryKey: ["inventory"] });
+    await qc.invalidateQueries({ queryKey: ["inventory-sheet"] });
+  };
+
+  /** @returns true if the item was deleted */
+  const removeItem = async (itemId: string, name: string): Promise<boolean> => {
+    if (
+      !window.confirm(
+        `Delete “${name}” from the catalog? This cannot be undone.`,
+      )
+    ) {
+      return false;
+    }
+    const res = await apiFetch(`/items/${itemId}`, { method: "DELETE" });
+    const body = (await res.json().catch(() => ({}))) as SheetSyncBody & {
+      error?: string;
+    };
+    if (!res.ok) {
+      setImportErr(body.error ?? `HTTP ${res.status}`);
+      setImportMsg(null);
+      return false;
+    }
+    const syncErr = sheetSyncAlert(body);
+    if (syncErr) {
+      setImportErr(`Item removed, but Google Sheet did not update: ${syncErr}`);
+      setImportMsg(null);
+    } else {
+      setImportErr(null);
+    }
+    await qc.invalidateQueries({ queryKey: ["inventory"] });
+    await qc.invalidateQueries({ queryKey: ["inventory-sheet"] });
+    await pushLiveGoogleSheet();
+    return true;
   };
 
   const items = inv.data?.items ?? [];
@@ -186,6 +305,28 @@ export function AdminDashboard() {
         </Link>
       </div>
 
+      {liveSheet.data?.url != null && liveSheet.data.syncEnabled === false ? (
+        <div
+          className="mb-6 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 shadow-sm"
+          role="alert"
+        >
+          <p className="font-medium text-amber-900">
+            Automatic Google Sheet sync is off
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+            The API needs both spreadsheet ID and the service account secret (
+            <code className="rounded bg-white/80 px-1 font-mono text-[0.8rem]">
+              GoogleSheetsSecretArn
+            </code>{" "}
+            or{" "}
+            <code className="rounded bg-white/80 px-1 font-mono text-[0.8rem]">
+              GoogleSheetsSecretName
+            </code>
+            ). Redeploy SAM, then share the sheet with the service account email as Editor.
+          </p>
+        </div>
+      ) : null}
+
       <section className="surface-glass relative isolate overflow-hidden p-4 md:p-6">
         <div className="relative z-10">
         <h2 className="section-title flex items-center gap-2 text-base md:text-lg">
@@ -212,12 +353,13 @@ export function AdminDashboard() {
             onChange={(e) => setCategory(e.target.value)}
           />
           <input
-            type="number"
-            min={0}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
             className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
             placeholder="Target (goal units)"
-            value={targetQty}
-            onChange={(e) => setTargetQty(Number(e.target.value))}
+            value={targetQtyInput}
+            onChange={onUnsignedIntInputChange(setTargetQtyInput)}
           />
           <button
             type="button"
@@ -287,31 +429,30 @@ export function AdminDashboard() {
               {importExcel.isPending ? "Importing…" : "Import Excel"}
             </button>
             {liveSheet.data?.url ? (
-              <>
-                <a
-                  href={liveSheet.data.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
-                >
-                  <i className="fa-solid fa-up-right-from-square text-xs" aria-hidden />
-                  Open live sheet
-                </a>
-                <button
-                  type="button"
-                  disabled={syncGoogleSheet.isPending}
-                  className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                  onClick={() => syncGoogleSheet.mutate()}
-                >
-                  <i
-                    className={`fa-solid ${syncGoogleSheet.isPending ? "fa-spinner fa-spin" : "fa-cloud-arrow-up"} text-xs`}
-                    aria-hidden
-                  />
-                  {syncGoogleSheet.isPending
-                    ? "Syncing…"
-                    : "Push to Google Sheet"}
-                </button>
-              </>
+              <a
+                href={liveSheet.data.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
+              >
+                <i className="fa-solid fa-up-right-from-square text-xs" aria-hidden />
+                Open live sheet
+              </a>
+            ) : null}
+            {liveSheet.data && liveSheet.data.syncEnabled !== false ? (
+              <button
+                type="button"
+                disabled={sheetSyncPending || importExcel.isPending || liveSheet.isLoading}
+                className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                title="Push current inventory to the live Google Sheet"
+                onClick={() => void manualSyncGoogleSheet()}
+              >
+                <i
+                  className={`fa-solid ${sheetSyncPending ? "fa-spinner fa-spin" : "fa-arrows-rotate"} text-xs`}
+                  aria-hidden
+                />
+                {sheetSyncPending ? "Syncing…" : "Sync sheet"}
+              </button>
             ) : null}
             <button
               type="button"
@@ -331,6 +472,16 @@ export function AdminDashboard() {
             </button>
           </div>
         </div>
+        {liveSheet.data?.url && liveSheet.data.syncEnabled !== false ? (
+          <p className="mb-2 text-xs text-bob-muted">
+            The shared Google Sheet is updated automatically on every change: stock,
+            targets, new items, Excel import, and request updates (no extra step).
+          </p>
+        ) : null}
+        <p className="mb-2 text-xs text-bob-muted">
+          Import Excel replaces the entire catalog: every existing item is removed, then
+          rows from your file are added (use Export Excel or your Google Sheet export).
+        </p>
         {copyMsg && (
           <p className="mb-2 text-sm text-bob-muted">{copyMsg}</p>
         )}
@@ -342,57 +493,266 @@ export function AdminDashboard() {
         )}
         <div className="space-y-3">
           {items.map((it) => (
-            <AdminInventoryCard
-              key={it.id}
-              it={it}
-              onCommitStock={(id, q) => void setStock(id, q)}
-              onCommitTarget={(id, t) => void patchItem(id, { targetQty: t })}
-            />
+            <AdminInventoryCard key={it.id} it={it} onEdit={setEditItem} />
           ))}
         </div>
       </section>
+
+      <InventoryEditModal
+        item={editItem}
+        onClose={() => setEditItem(null)}
+        patchItem={patchItem}
+        setStock={setStock}
+        removeItem={removeItem}
+        pushLiveGoogleSheet={pushLiveGoogleSheet}
+      />
     </Layout>
+  );
+}
+
+function InventoryEditModal({
+  item,
+  onClose,
+  patchItem,
+  setStock,
+  removeItem,
+  pushLiveGoogleSheet,
+}: {
+  item: InvItem | null;
+  onClose: () => void;
+  patchItem: (
+    id: string,
+    p: { name?: string; category?: string; targetQty?: number },
+  ) => Promise<void>;
+  setStock: (id: string, q: number) => Promise<void>;
+  removeItem: (id: string, name: string) => Promise<boolean>;
+  pushLiveGoogleSheet: () => Promise<{ rowCount: number } | undefined>;
+}) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
+  const [targetQtyInput, setTargetQtyInput] = useState("0");
+  const [onHandInput, setOnHandInput] = useState("0");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!item) return;
+    setName(item.name);
+    setCategory(item.category ?? "");
+    setTargetQtyInput(String(item.targetQty));
+    setOnHandInput(String(item.onHand));
+  }, [item]);
+
+  useEffect(() => {
+    if (!item) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [item, onClose]);
+
+  if (!item) return null;
+
+  async function handleSave() {
+    if (!item) return;
+    const it = item;
+    const n = name.trim();
+    if (!n) return;
+    const tRaw = targetQtyInput.trim();
+    const qRaw = onHandInput.trim();
+    const t = tRaw === "" ? 0 : Math.floor(Number(tRaw));
+    const q = qRaw === "" ? 0 : Math.floor(Number(qRaw));
+    if (!Number.isFinite(t) || t < 0 || !Number.isFinite(q) || q < 0) return;
+    const cat = category.trim();
+    const stockChanged = q !== it.onHand;
+    const metaChanged =
+      n !== it.name ||
+      cat !== (it.category ?? "").trim() ||
+      t !== it.targetQty;
+    if (!stockChanged && !metaChanged) {
+      onClose();
+      return;
+    }
+    setSaving(true);
+    try {
+      if (stockChanged) await setStock(it.id, q);
+      if (metaChanged) {
+        const patch: { name?: string; category?: string; targetQty?: number } =
+          {};
+        if (n !== it.name) patch.name = n;
+        if (cat !== (it.category ?? "").trim()) patch.category = cat;
+        if (t !== it.targetQty) patch.targetQty = t;
+        if (Object.keys(patch).length > 0) {
+          await patchItem(it.id, patch);
+        }
+      }
+      await pushLiveGoogleSheet();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="inventory-edit-title"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 bg-bob-ink/40 backdrop-blur-[2px]"
+        aria-label="Close dialog"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-bob-mist bg-bob-cream p-5 shadow-2xl shadow-bob-wood/20">
+        <div className="mb-4 flex items-start justify-between gap-2">
+          <h2
+            id="inventory-edit-title"
+            className="text-lg font-semibold text-bob-ink"
+          >
+            Edit item
+          </h2>
+          <button
+            type="button"
+            className="rounded-full p-2 text-bob-muted hover:bg-bob-mist/80 hover:text-bob-ink"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            <i className="fa-solid fa-xmark text-lg" aria-hidden />
+          </button>
+        </div>
+
+        <div className="grid gap-3">
+          <label className="block text-sm">
+            <span className="text-bob-muted">Name</span>
+            <input
+              className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-bob-muted">Category</span>
+            <input
+              className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              <span className="text-bob-muted">Target</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+                value={targetQtyInput}
+                onChange={onUnsignedIntInputChange(setTargetQtyInput)}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-bob-muted">On hand</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+                value={onHandInput}
+                onChange={onUnsignedIntInputChange(setOnHandInput)}
+              />
+            </label>
+          </div>
+          <p className="text-xs text-bob-muted">
+            Projected (from requests):{" "}
+            <span className="font-medium text-bob-magenta">{item.projected}</span>{" "}
+            — read-only here
+          </p>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+          <button
+            type="button"
+            className="order-3 rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-50 sm:order-1 sm:mr-auto"
+            disabled={saving}
+            onClick={() =>
+              void removeItem(item.id, item.name).then((did) => {
+                if (did) onClose();
+              })
+            }
+          >
+            Remove from catalog…
+          </button>
+          <button
+            type="button"
+            className="order-2 rounded-full border border-bob-mist px-4 py-2 text-sm font-medium text-bob-ink hover:bg-white"
+            disabled={saving}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={saving || !name.trim()}
+            className="order-1 inline-flex items-center justify-center gap-2 rounded-full bg-bob-wood px-5 py-2 text-sm font-semibold text-white hover:bg-bob-ink disabled:opacity-50 sm:order-3"
+            onClick={() => void handleSave()}
+          >
+            {saving ? (
+              <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+            ) : (
+              <i className="fa-solid fa-check" aria-hidden />
+            )}
+            Save changes
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function AdminInventoryCard({
   it,
-  onCommitStock,
-  onCommitTarget,
+  onEdit,
 }: {
   it: InvItem;
-  onCommitStock: (id: string, q: number) => void;
-  onCommitTarget: (id: string, t: number) => void;
+  onEdit: (item: InvItem) => void;
 }) {
-  const stockInputRef = useRef<HTMLInputElement>(null);
   const accent = categoryAccent(it.category || "General");
   const level = stockLevelFromOnHand(it.onHand);
   const status = stockStatusClasses(level);
   const emoji = itemEmoji(it.name, it.category);
 
-  const focusStock = () => stockInputRef.current?.focus();
-
   return (
     <article
       role="button"
       tabIndex={0}
-      aria-label={`${it.name}, edit target or on-hand quantity`}
-      onClick={focusStock}
+      aria-label={`${it.name}, open editor`}
+      onClick={() => onEdit(it)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          focusStock();
+          onEdit(it);
         }
       }}
       className={inventoryGlassCardClass(accent)}
     >
-      <span
-        className="pointer-events-none absolute right-3 top-3 z-10 text-bob-gold/50"
-        aria-hidden
+      <button
+        type="button"
+        className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-bob-gold/80 transition-colors hover:bg-white/80 hover:text-bob-gold"
+        aria-label={`Edit ${it.name}`}
+        title="Edit"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit(it);
+        }}
       >
-        <i className="fa-solid fa-pen-to-square text-lg" />
-      </span>
-      <div className="relative z-10 flex flex-wrap items-start gap-3">
+        <i className="fa-solid fa-pen-to-square text-lg" aria-hidden />
+      </button>
+      <div className="relative z-10 flex flex-wrap items-start gap-3 pr-10">
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-bob-mist bg-white/80 text-2xl shadow-sm"
           aria-hidden
@@ -417,7 +777,7 @@ function AdminInventoryCard({
             </p>
           ) : null}
           <p className={`mt-1 text-sm ${status.textClassOnCard}`}>{status.label}</p>
-          <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-bob-muted">
                 <span className="inline-flex items-center gap-1">
@@ -428,32 +788,7 @@ function AdminInventoryCard({
                   Target
                 </span>
               </dt>
-              <dd className="mt-0.5">
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  key={`${it.id}-tgt-${it.targetQty}`}
-                  defaultValue={it.targetQty}
-                  className="w-full min-w-0 max-w-[7rem] rounded-lg border border-bob-mist bg-white px-2 py-1 font-medium text-bob-ink shadow-sm focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/30"
-                  aria-label={`Target goal for ${it.name}`}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  onBlur={(e) => {
-                    const raw = e.target.value.trim();
-                    if (raw === "") {
-                      e.target.value = String(it.targetQty);
-                      return;
-                    }
-                    const t = Math.floor(Number(raw));
-                    if (!Number.isFinite(t) || t < 0) {
-                      e.target.value = String(it.targetQty);
-                      return;
-                    }
-                    if (t !== it.targetQty) onCommitTarget(it.id, t);
-                  }}
-                />
-              </dd>
+              <dd className="font-medium text-bob-ink">{it.targetQty}</dd>
             </div>
             <div>
               <dt className="text-bob-muted">
@@ -465,37 +800,16 @@ function AdminInventoryCard({
                   On hand
                 </span>
               </dt>
-              <dd className="mt-0.5">
-                <input
-                  ref={stockInputRef}
-                  type="number"
-                  min={0}
-                  step={1}
-                  key={`${it.id}-${it.onHand}`}
-                  defaultValue={it.onHand}
-                  className={`w-full min-w-0 max-w-[7rem] rounded-lg border border-bob-mist bg-white px-2 py-1 font-medium shadow-sm focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/30 ${
-                    level === "out"
-                      ? "text-red-700"
-                      : level === "low"
-                        ? "text-amber-700"
-                        : "text-emerald-800"
-                  }`}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  onBlur={(e) => {
-                    const raw = e.target.value.trim();
-                    if (raw === "") {
-                      e.target.value = String(it.onHand);
-                      return;
-                    }
-                    const q = Math.floor(Number(raw));
-                    if (!Number.isFinite(q) || q < 0) {
-                      e.target.value = String(it.onHand);
-                      return;
-                    }
-                    if (q !== it.onHand) onCommitStock(it.id, q);
-                  }}
-                />
+              <dd
+                className={`font-medium ${
+                  level === "out"
+                    ? "text-red-700"
+                    : level === "low"
+                      ? "text-amber-700"
+                      : "text-emerald-800"
+                }`}
+              >
+                {it.onHand}
               </dd>
             </div>
             <div>
@@ -508,7 +822,7 @@ function AdminInventoryCard({
                   Projected
                 </span>
               </dt>
-              <dd className="mt-0.5 font-medium text-bob-magenta">{it.projected}</dd>
+              <dd className="font-medium text-bob-magenta">{it.projected}</dd>
             </div>
           </dl>
         </div>

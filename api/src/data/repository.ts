@@ -71,6 +71,21 @@ export async function deleteItem(id: string): Promise<void> {
       Key: { pk: PK, sk: `ITEM#${id}` },
     }),
   );
+  await client.send(
+    new DeleteCommand({
+      TableName: tableName(),
+      Key: { pk: PK, sk: `STOCK#${id}` },
+    }),
+  );
+}
+
+/** Deletes every catalog item and its stock row. Returns how many items were removed. */
+export async function deleteAllItems(): Promise<number> {
+  const items = await listItems();
+  for (const it of items) {
+    await deleteItem(it.id);
+  }
+  return items.length;
 }
 
 export async function getStock(itemId: string): Promise<number> {

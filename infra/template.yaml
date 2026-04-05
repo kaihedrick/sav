@@ -48,7 +48,7 @@ Parameters:
   GoogleSheetsTabName:
     Type: String
     Default: "Inventory Tracker"
-    Description: Worksheet tab name where row 1 is headers and data starts at A2.
+    Description: Worksheet tab name (A1 notation). API clears/writes from A1 per Sheets values.update.
 
 Conditions:
   HasResend: !Not [!Equals [!Ref ResendApiKey, ""]]

@@ -20,7 +20,8 @@ export function Layout({
 
   const liveSheet = useQuery({
     queryKey: ["inventory-sheet"],
-    queryFn: () => apiJson<{ url: string | null }>("/inventory/sheet"),
+    queryFn: () =>
+      apiJson<{ url: string | null; syncEnabled?: boolean }>("/inventory/sheet"),
     enabled: showNav,
   });
 

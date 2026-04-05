@@ -1,3 +1,15 @@
+/**
+ * Google Sheets API v4 (REST), service-account JWT auth.
+ *
+ * Docs (Context7 / Google Workspace):
+ * - batchClear: developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/batchClear
+ * - values.update (PUT): developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update
+ *
+ * Flow: POST `.../spreadsheets/{id}/values:batchClear` with `{ ranges: [A1 notation, ...] }` (values only;
+ * formatting remains), then PUT `.../spreadsheets/{id}/values/{range}?valueInputOption=USER_ENTERED` with a
+ * ValueRange JSON body (`values`, `majorDimension: ROWS`, `range` matching the path).
+ * Scope: `https://www.googleapis.com/auth/spreadsheets`.
+ */
 import {
   GetSecretValueCommand,
   SecretsManagerClient,
@@ -13,6 +25,26 @@ type ServiceAccountCreds = {
 
 let cachedToken: { token: string; expiresAtMs: number } | null = null;
 let cachedSa: { arn: string; creds: ServiceAccountCreds } | null = null;
+
+function invalidateSheetsAccessTokenCache(): void {
+  cachedToken = null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableHttpStatus(status: number): boolean {
+  return (
+    status === 408 ||
+    status === 429 ||
+    (status >= 500 && status <= 504)
+  );
+}
+
+function backoffMs(attemptIndex: number): number {
+  return Math.min(2500, 120 * 2 ** attemptIndex);
+}
 
 async function loadServiceAccount(secretArn: string): Promise<ServiceAccountCreds> {
   if (cachedSa?.arn === secretArn) return cachedSa.creds;
@@ -77,7 +109,11 @@ export function isGoogleSheetsSyncEnabled(): boolean {
 }
 
 /**
- * Clears a large data block then writes values starting at A2 (header row untouched).
+ * Clears a fixed grid on the tab, then writes a full ValueRange (header row + data) from A1.
+ * Ranges use A1 notation; sheet titles with spaces/special chars are wrapped in single quotes,
+ * with embedded `'` escaped as `''` per Sheets A1 rules.
+ *
+ * Retries transient failures (429, 5xx, timeouts) and refreshes the OAuth token on 401.
  */
 export async function clearAndWriteInventoryRows(
   values: (string | number)[][],
@@ -85,49 +121,100 @@ export async function clearAndWriteInventoryRows(
   const cfg = sheetsConfigured();
   if (!cfg) throw new Error("Google Sheets is not configured");
 
-  const token = await getAccessToken(cfg.secretArn);
   const tab = cfg.tabName.replace(/'/g, "''");
-  const clearRange = `'${tab}'!A2:Z2000`;
-  const writeRange = `'${tab}'!A2`;
-
+  const clearRange = `'${tab}'!A1:Z2000`;
+  const writeRange = `'${tab}'!A1`;
   const base = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}`;
 
-  const clearRes = await fetch(`${base}/values:batchClear`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ ranges: [clearRange] }),
-  });
-  if (!clearRes.ok) {
-    const t = await clearRes.text();
-    throw new Error(
-      `Sheets batchClear failed: ${clearRes.status} ${t.slice(0, 500)} ` +
-        `(spreadsheetId=${cfg.spreadsheetId}, tab=${JSON.stringify(cfg.tabName)}; ` +
-        `range ${clearRange})`,
-    );
+  const maxAttempts = 4;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const token = await getAccessToken(cfg.secretArn);
+
+      const clearRes = await fetch(`${base}/values:batchClear`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ranges: [clearRange] }),
+      });
+
+      if (clearRes.status === 401) {
+        invalidateSheetsAccessTokenCache();
+        lastError = new Error(
+          `Sheets batchClear: 401 (token refreshed, retrying) tab=${JSON.stringify(cfg.tabName)}`,
+        );
+        continue;
+      }
+
+      if (!clearRes.ok) {
+        const t = await clearRes.text();
+        const err = new Error(
+          `Sheets batchClear failed: ${clearRes.status} ${t.slice(0, 500)} ` +
+            `(spreadsheetId=${cfg.spreadsheetId}, tab=${JSON.stringify(cfg.tabName)}; ` +
+            `range ${clearRange})`,
+        );
+        if (isRetryableHttpStatus(clearRes.status) && attempt < maxAttempts - 1) {
+          lastError = err;
+          await sleep(backoffMs(attempt));
+          continue;
+        }
+        throw err;
+      }
+
+      const q = new URLSearchParams({ valueInputOption: "USER_ENTERED" });
+      const updUrl = `${base}/values/${encodeURIComponent(writeRange)}?${q}`;
+      const updRes = await fetch(updUrl, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          range: writeRange,
+          majorDimension: "ROWS",
+          values,
+        }),
+      });
+
+      if (updRes.status === 401) {
+        invalidateSheetsAccessTokenCache();
+        lastError = new Error(
+          `Sheets update: 401 (token refreshed, retrying) tab=${JSON.stringify(cfg.tabName)}`,
+        );
+        continue;
+      }
+
+      if (!updRes.ok) {
+        const t = await updRes.text();
+        const err = new Error(
+          `Sheets update failed: ${updRes.status} ${t.slice(0, 500)} ` +
+            `(spreadsheetId=${cfg.spreadsheetId}, tab=${JSON.stringify(cfg.tabName)})`,
+        );
+        if (isRetryableHttpStatus(updRes.status) && attempt < maxAttempts - 1) {
+          lastError = err;
+          await sleep(backoffMs(attempt));
+          continue;
+        }
+        throw err;
+      }
+
+      return;
+    } catch (e) {
+      const isNetwork =
+        e instanceof TypeError ||
+        (e instanceof Error && /fetch|network|ECONNRESET|ETIMEDOUT/i.test(e.message));
+      if (isNetwork && attempt < maxAttempts - 1) {
+        lastError = e instanceof Error ? e : new Error(String(e));
+        await sleep(backoffMs(attempt));
+        continue;
+      }
+      throw e;
+    }
   }
 
-  const q = new URLSearchParams({ valueInputOption: "USER_ENTERED" });
-  const updUrl = `${base}/values/${encodeURIComponent(writeRange)}?${q}`;
-  const updRes = await fetch(updUrl, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      range: writeRange,
-      majorDimension: "ROWS",
-      values,
-    }),
-  });
-  if (!updRes.ok) {
-    const t = await updRes.text();
-    throw new Error(
-      `Sheets update failed: ${updRes.status} ${t.slice(0, 500)} ` +
-        `(spreadsheetId=${cfg.spreadsheetId}, tab=${JSON.stringify(cfg.tabName)})`,
-    );
-  }
+  throw lastError ?? new Error("Google Sheets sync failed after retries");
 }

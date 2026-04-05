@@ -168,10 +168,11 @@ export async function handleRequest(
     return json(200, { ok: true }, origin);
   }
 
-  /** Public link to the live Google Sheet (when the API is configured with a spreadsheet ID). */
+  /** Public link + whether automatic sync is fully configured (ID + secret). */
   if (path === "/inventory/sheet" && method === "GET") {
     const url = getPublicSheetViewUrl();
-    return json(200, { url }, origin);
+    const syncEnabled = isGoogleSheetsSyncEnabled();
+    return json(200, { url, syncEnabled }, origin);
   }
 
   if (isPostAuthGoogle(method, path)) {
@@ -345,8 +346,8 @@ export async function handleRequest(
       };
       await repo.putItem(entity);
       await repo.setStock(id, 0);
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(201, entity, origin);
+      const sheetSync = await runGoogleSheetSync();
+      return json(201, { ...entity, ...sheetSync }, origin);
     }
 
     if (path === "/admin/items/import" && method === "POST") {
@@ -363,8 +364,16 @@ export async function handleRequest(
         sortPriority: z.number().int().optional(),
       });
       const p = z
-        .object({ items: z.array(itemRow).min(1).max(500) })
+        .object({
+          items: z.array(itemRow).min(1).max(500),
+          /** When true, removes all existing catalog items before importing (file becomes source of truth). */
+          replaceAll: z.boolean().optional(),
+        })
         .parse(body);
+      let deletedBefore = 0;
+      if (p.replaceAll) {
+        deletedBefore = await repo.deleteAllItems();
+      }
       let created = 0;
       let updated = 0;
       const now = new Date().toISOString();
@@ -408,8 +417,16 @@ export async function handleRequest(
           created++;
         }
       }
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(200, { created, updated, total: created + updated }, origin);
+      const sheetSync = await runGoogleSheetSync();
+      return json(200, {
+        created,
+        updated,
+        total: created + updated,
+        ...(p.replaceAll
+          ? { replaceAll: true as const, deletedBefore }
+          : {}),
+        ...sheetSync,
+      }, origin);
     }
 
     const itemIdMatch = path.match(/^\/items\/([^/]+)$/);
@@ -434,16 +451,16 @@ export async function handleRequest(
         updatedAt: new Date().toISOString(),
       };
       await repo.putItem(updated);
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(200, updated, origin);
+      const sheetSync = await runGoogleSheetSync();
+      return json(200, { ...updated, ...sheetSync }, origin);
     }
 
     if (itemIdMatch && method === "DELETE") {
       if (!admin) return json(403, { error: "Admin only" }, origin);
       const id = itemIdMatch[1];
       await repo.deleteItem(id);
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(200, { ok: true }, origin);
+      const sheetSync = await runGoogleSheetSync();
+      return json(200, { ok: true, ...sheetSync }, origin);
     }
 
     const stockMatch = path.match(/^\/items\/([^/]+)\/stock$/);
@@ -453,8 +470,8 @@ export async function handleRequest(
       const body = JSON.parse(event.body || "{}");
       const p = z.object({ quantity: z.number().int().nonnegative() }).parse(body);
       await repo.setStock(id, p.quantity);
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(200, { itemId: id, quantity: p.quantity }, origin);
+      const sheetSync = await runGoogleSheetSync();
+      return json(200, { itemId: id, quantity: p.quantity, ...sheetSync }, origin);
     }
 
     /* ---------- requests ---------- */
@@ -510,8 +527,8 @@ export async function handleRequest(
         contributorEmail: r.userEmail,
         summary: summarizeLines(r.lines),
       });
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(201, r, origin);
+      const sheetSync = await runGoogleSheetSync();
+      return json(201, { ...r, ...sheetSync }, origin);
     }
 
     const reqMatch = path.match(/^\/requests\/([^/]+)$/);
@@ -543,8 +560,8 @@ export async function handleRequest(
           summary: `Updated request: ${summarizeLines(toSave.lines)}`,
         });
       }
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(200, toSave, origin);
+      const sheetSyncReq = await runGoogleSheetSync();
+      return json(200, { ...toSave, ...sheetSyncReq }, origin);
     }
 
     if (reqMatch && method === "DELETE") {
@@ -555,8 +572,8 @@ export async function handleRequest(
         return json(403, { error: "Forbidden" }, origin);
       }
       await repo.deleteRequest(id);
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(200, { ok: true }, origin);
+      const sheetSyncDel = await runGoogleSheetSync();
+      return json(200, { ok: true, ...sheetSyncDel }, origin);
     }
 
     const statusMatch = path.match(/^\/admin\/requests\/([^/]+)\/status$/);
@@ -575,8 +592,8 @@ export async function handleRequest(
         updatedAt: new Date().toISOString(),
       };
       await repo.putRequest(updated);
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(200, updated, origin);
+      const sheetSyncSt = await runGoogleSheetSync();
+      return json(200, { ...updated, ...sheetSyncSt }, origin);
     }
 
     if (path === "/admin/seed" && method === "POST") {
@@ -607,8 +624,8 @@ export async function handleRequest(
         await repo.putItem(entity);
         await repo.setStock(id, 5);
       }
-      await syncInventoryToGoogleSheetBestEffort();
-      return json(201, { ok: true, count: samples.length }, origin);
+      const sheetSyncSeed = await runGoogleSheetSync();
+      return json(201, { ok: true, count: samples.length, ...sheetSyncSeed }, origin);
     }
 
     if (path === "/export.csv" && method === "GET") {
@@ -663,7 +680,20 @@ function csvEscape(s: string): string {
   return s;
 }
 
-/** Builds the same rows as the manual “Push to Google Sheet” admin action. */
+/** Column A1 row for spreadsheets.values.update (matches web Excel export). */
+const INVENTORY_SHEET_HEADER_ROW: string[] = [
+  "Item ID",
+  "Item name",
+  "Type",
+  "Price",
+  "Stock",
+  "Status",
+  "Notes",
+  "Target",
+  "Projected",
+];
+
+/** Header row + data rows for ValueRange.values (majorDimension ROWS). */
 async function buildInventorySheetRows(): Promise<(string | number)[][]> {
   const items = await repo.listItems();
   const requests = await repo.listAllRequests();
@@ -675,7 +705,7 @@ async function buildInventorySheetRows(): Promise<(string | number)[][]> {
     }),
   );
   const sorted = sortItemsByPriority(withStock);
-  return sorted.map((it) => {
+  const dataRows = sorted.map((it) => {
     const price = it.price != null && Number.isFinite(it.price) ? it.price : "";
     return [
       it.id,
@@ -689,18 +719,26 @@ async function buildInventorySheetRows(): Promise<(string | number)[][]> {
       it.projected,
     ];
   });
+  return [INVENTORY_SHEET_HEADER_ROW, ...dataRows];
 }
 
-/**
- * Pushes inventory to Google Sheets when configured. Never throws — logs on failure
- * so API mutations still succeed if Sheets is slow or misconfigured.
- */
-async function syncInventoryToGoogleSheetBestEffort(): Promise<void> {
-  if (!isGoogleSheetsSyncEnabled()) return;
+type GoogleSheetSyncPayload =
+  | { googleSheetSync: "ok" }
+  | { googleSheetSync: "skipped" }
+  | { googleSheetSync: "error"; googleSheetSyncError: string };
+
+/** Pushes inventory to Sheets when configured. Returns status for the client; never throws. */
+async function runGoogleSheetSync(): Promise<GoogleSheetSyncPayload> {
+  if (!isGoogleSheetsSyncEnabled()) {
+    return { googleSheetSync: "skipped" };
+  }
   try {
     const values = await buildInventorySheetRows();
     await clearAndWriteInventoryRows(values);
+    return { googleSheetSync: "ok" };
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     console.error("[google-sheets] auto-sync failed:", e);
+    return { googleSheetSync: "error", googleSheetSyncError: msg };
   }
 }
