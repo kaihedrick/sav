@@ -239,14 +239,8 @@ export async function listUserProfiles(): Promise<UserProfile[]> {
 }
 
 export async function getOrgSettings(): Promise<OrgSettings | null> {
-  const out = await client.send(
-    new GetCommand({
-      TableName: tableName(),
-      Key: { pk: PK, sk: "SETTINGS" },
-    }),
-  );
-  if (!out.Item) return null;
-  const raw = out.Item as Record<string, unknown>;
+  const raw = await getSettingsRecord();
+  if (!raw) return null;
   const eventDate = String(raw.eventDate ?? "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) return null;
   return {
@@ -255,15 +249,22 @@ export async function getOrgSettings(): Promise<OrgSettings | null> {
   };
 }
 
-export async function putOrgSettings(eventDate: string): Promise<OrgSettings> {
-  const trimmed = eventDate.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    throw new Error("eventDate must be YYYY-MM-DD");
-  }
-  const settings: OrgSettings = {
-    eventDate: trimmed,
-    updatedAt: new Date().toISOString(),
-  };
+async function getSettingsRecord(): Promise<Record<string, unknown> | null> {
+  const out = await client.send(
+    new GetCommand({
+      TableName: tableName(),
+      Key: { pk: PK, sk: "SETTINGS" },
+    }),
+  );
+  if (!out.Item) return null;
+  return out.Item as Record<string, unknown>;
+}
+
+async function putSettingsRecord(
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const existing = (await getSettingsRecord()) ?? {};
+  const now = new Date().toISOString();
   await client.send(
     new PutCommand({
       TableName: tableName(),
@@ -271,10 +272,90 @@ export async function putOrgSettings(eventDate: string): Promise<OrgSettings> {
         pk: PK,
         sk: "SETTINGS",
         entityType: "ORG_SETTINGS",
-        ...settings,
+        ...existing,
+        ...patch,
+        updatedAt: now,
       },
     }),
   );
+}
+
+export async function getOrgAdminEmails(): Promise<string[]> {
+  const raw = await getSettingsRecord();
+  if (!raw) return [];
+  const list = raw.adminEmails;
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((e) => String(e).toLowerCase().trim())
+    .filter((e) => e.includes("@"));
+}
+
+export async function addOrgAdminEmail(email: string): Promise<string[]> {
+  const normalized = email.toLowerCase().trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    throw new Error("Invalid email");
+  }
+  const current = await getOrgAdminEmails();
+  if (current.includes(normalized)) return current;
+  const next = [...current, normalized].sort((a, b) => a.localeCompare(b));
+  await putSettingsRecord({ adminEmails: next });
+  return next;
+}
+
+export async function removeOrgAdminEmail(email: string): Promise<string[]> {
+  const normalized = email.toLowerCase().trim();
+  const current = await getOrgAdminEmails();
+  const next = current.filter((e) => e !== normalized);
+  if (next.length === current.length) return current;
+  await putSettingsRecord({ adminEmails: next });
+  return next;
+}
+
+/** Record sign-in; preserves saved names, fills from Google when profile is incomplete. */
+export async function touchUserOnLogin(input: {
+  userId: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}): Promise<UserProfile> {
+  const existing = await getUserProfile(input.userId);
+  const now = new Date().toISOString();
+  const firstName =
+    existing?.firstName?.trim() || input.firstName?.trim() || "";
+  const lastName =
+    existing?.lastName?.trim() || input.lastName?.trim() || "";
+  const profile: UserProfile = {
+    userId: input.userId,
+    email: input.email.trim(),
+    firstName,
+    lastName,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+  await client.send(
+    new PutCommand({
+      TableName: tableName(),
+      Item: {
+        pk: PK,
+        sk: `USER#${input.userId}`,
+        gsi1pk: "USER_PROFILE",
+        gsi1sk: profile.email.toLowerCase(),
+        entityType: "USER_PROFILE",
+        ...userProfileAttrs(profile),
+      },
+    }),
+  );
+  return profile;
+}
+
+export async function putOrgSettings(eventDate: string): Promise<OrgSettings> {
+  const trimmed = eventDate.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    throw new Error("eventDate must be YYYY-MM-DD");
+  }
+  await putSettingsRecord({ eventDate: trimmed });
+  const settings = await getOrgSettings();
+  if (!settings) throw new Error("Failed to save settings");
   return settings;
 }
 

@@ -218,23 +218,23 @@ export function AdminRequestsPage() {
         </p>
       </div>
 
-      <section className="surface-glass space-y-4 p-4">
+      <section className="surface-glass min-w-0 space-y-4 overflow-visible p-4">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-bob-wood">
           Event
         </h2>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <label className="block flex-1 text-sm text-bob-ink">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="block min-w-0 flex-1 text-sm text-bob-ink">
             Current event date
             <input
               type="date"
-              className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-bob-ink"
+              className="input-date"
               value={draftDate || eventDate || ""}
               onChange={(e) => setDraftDate(e.target.value)}
             />
           </label>
           <button
             type="button"
-            className="surface-glass-btn px-3 py-2.5 text-sm font-medium"
+            className="surface-glass-btn w-full shrink-0 px-3 py-2.5 text-sm font-medium sm:w-auto"
             disabled={
               saveEventDate.isPending ||
               !(draftDate || eventDate) ||
@@ -253,25 +253,25 @@ export function AdminRequestsPage() {
           </button>
         </div>
 
-        <div className="border-t border-bob-mist/70 pt-4">
+        <div className="min-w-0 border-t border-bob-mist/70 pt-4">
           <p className="text-sm text-bob-muted">
             Starting a new event saves request history, contributors, and
             inventory to Excel (Downloads on desktop; Share / Files on iPhone),
             then clears the inbox.
           </p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="block flex-1 text-sm text-bob-ink">
+          <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="block min-w-0 flex-1 text-sm text-bob-ink">
               New event date
               <input
                 type="date"
-                className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-bob-ink"
+                className="input-date"
                 value={newEventDate}
                 onChange={(e) => setNewEventDate(e.target.value)}
               />
             </label>
             <button
               type="button"
-              className="rounded-full bg-bob-wood px-4 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-50"
+              className="w-full shrink-0 rounded-full bg-bob-wood px-4 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-50 sm:w-auto"
               disabled={busy}
               onClick={() => void startNewEvent()}
             >
@@ -280,7 +280,7 @@ export function AdminRequestsPage() {
           </div>
           <button
             type="button"
-            className="surface-glass-btn mt-3 px-3 py-2 text-sm font-medium"
+            className="surface-glass-btn mt-3 w-full px-3 py-2 text-sm font-medium sm:w-auto"
             disabled={busy}
             onClick={() =>
               void exportArchive().catch((e) =>

@@ -50,3 +50,9 @@ export interface OrgSettings {
   eventDate: string;
   updatedAt: string;
 }
+
+/** Extra admin emails granted in-app (merged with Lambda ADMIN_EMAIL). */
+export interface OrgAdminGrant {
+  adminEmails: string[];
+  updatedAt: string;
+}

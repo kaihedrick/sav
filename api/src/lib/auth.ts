@@ -3,6 +3,7 @@ import {
   SecretsManagerClient,
   GetSecretValueCommand,
 } from "@aws-sdk/client-secrets-manager";
+import { allAdminEmails, isAdminEmail } from "../domain/adminService.js";
 
 export interface AuthUser {
   sub: string;
@@ -56,15 +57,6 @@ export async function verifyGoogleIdToken(idToken: string): Promise<{
   };
 }
 
-/** One or more admin emails: `ADMIN_EMAIL` may be comma- or semicolon-separated. */
-function adminEmailList(): string[] {
-  const raw = process.env.ADMIN_EMAIL ?? "";
-  return raw
-    .split(/[,;]/)
-    .map((e) => e.toLowerCase().trim())
-    .filter(Boolean);
-}
-
 export async function mintSessionJwt(input: {
   sub: string;
   email: string;
@@ -72,7 +64,7 @@ export async function mintSessionJwt(input: {
   /** Preferred display name (e.g. from saved profile). */
   displayName?: string;
 }): Promise<string> {
-  const admins = adminEmailList();
+  const admins = await allAdminEmails();
   const email = input.email.toLowerCase().trim();
   const role =
     admins.length > 0 && admins.includes(email) ? "admin" : "contributor";
@@ -109,10 +101,9 @@ export async function verifyBearerToken(token: string): Promise<AuthUser> {
   };
 }
 
-export function isAdmin(user: AuthUser): boolean {
+export async function isAdmin(user: AuthUser): Promise<boolean> {
   if (user.groups.includes("admin")) return true;
   const email = user.email?.toLowerCase().trim();
   if (!email) return false;
-  const admins = adminEmailList();
-  return admins.length > 0 && admins.includes(email);
+  return await isAdminEmail(email);
 }

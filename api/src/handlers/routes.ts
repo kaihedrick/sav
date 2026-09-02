@@ -11,6 +11,7 @@ import {
   mintSessionJwt,
 } from "../lib/auth.js";
 import * as repo from "../data/repository.js";
+import { allAdminEmails, adminEmailsFromEnv } from "../domain/adminService.js";
 import {
   newRequest,
   mergeRequestUpdate,
@@ -184,7 +185,12 @@ export async function handleRequest(
         .object({ credential: z.string().min(20) })
         .parse(body);
       const google = await verifyGoogleIdToken(credential);
-      const profile = await repo.getUserProfile(google.sub);
+      const profile = await repo.touchUserOnLogin({
+        userId: google.sub,
+        email: google.email,
+        firstName: google.givenName,
+        lastName: google.familyName,
+      });
       const displayFromProfile =
         profile?.firstName?.trim() && profile?.lastName?.trim()
           ? `${profile.firstName.trim()} ${profile.lastName.trim()}`
@@ -218,7 +224,7 @@ export async function handleRequest(
   const auth = await requireUser(event, origin);
   if ("error" in auth && auth.error) return auth.error;
   const { user } = auth as { user: import("../lib/auth.js").AuthUser };
-  const admin = isAdmin(user);
+  const admin = await isAdmin(user);
 
   try {
     if (path === "/me" && method === "GET") {
@@ -294,7 +300,56 @@ export async function handleRequest(
     if (path === "/admin/users" && method === "GET") {
       if (!admin) return json(403, { error: "Admin only" }, origin);
       const users = await repo.listUserProfiles();
-      return json(200, { users }, origin);
+      const adminEmails = await allAdminEmails();
+      const dynamoAdmins = await repo.getOrgAdminEmails();
+      const envAdmins = new Set(adminEmailsFromEnv());
+      const adminSet = new Set(adminEmails);
+      const dynamoSet = new Set(dynamoAdmins);
+      const rows = users
+        .map((u) => {
+          const email = u.email.toLowerCase().trim();
+          const displayName =
+            `${u.firstName} ${u.lastName}`.trim() || u.email;
+          const isAdminUser = adminSet.has(email);
+          const canRevokeAdmin =
+            isAdminUser && dynamoSet.has(email) && !envAdmins.has(email);
+          return {
+            ...u,
+            displayName,
+            isAdmin: isAdminUser,
+            canRevokeAdmin,
+          };
+        })
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return json(200, { users: rows }, origin);
+    }
+
+    if (path === "/admin/admins" && method === "GET") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      const emails = await allAdminEmails();
+      return json(200, { emails }, origin);
+    }
+
+    if (path === "/admin/admins" && method === "POST") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      const body = JSON.parse(event.body || "{}");
+      const p = z.object({ email: z.string().email().max(200) }).parse(body);
+      await repo.addOrgAdminEmail(p.email);
+      const emails = await allAdminEmails();
+      return json(200, { emails }, origin);
+    }
+
+    if (path === "/admin/admins" && method === "DELETE") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      const body = JSON.parse(event.body || "{}");
+      const p = z.object({ email: z.string().email().max(200) }).parse(body);
+      const normalized = p.email.toLowerCase().trim();
+      if (adminEmailsFromEnv().includes(normalized)) {
+        return json(400, { error: "Cannot remove built-in admin" }, origin);
+      }
+      await repo.removeOrgAdminEmail(normalized);
+      const emails = await allAdminEmails();
+      return json(200, { emails }, origin);
     }
 
     if (path === "/admin/inventory/sync-google-sheet" && method === "POST") {

@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { StaticPageBackground } from "./StaticPageBackground";
+import { AdminAccessPanel } from "./AdminAccessPanel";
 import { clearTokens } from "../lib/tokens";
 import { apiJson } from "../lib/api";
 
@@ -112,7 +113,12 @@ export function Layout({
                   More
                 </p>
               </div>
-              <div className="p-2">
+              <div className="max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain p-2">
+                {isAdmin ? (
+                  <div className="mb-2">
+                    <AdminAccessPanel />
+                  </div>
+                ) : null}
                 {sheetUrl ? (
                   <a
                     href={sheetUrl}

@@ -147,6 +147,11 @@ body {
   .surface-glass-btn {
     @apply rounded-full border border-bob-mist/90 bg-bob-card/60 text-bob-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-bob-peach/70 hover:border-bob-gold/40;
   }
+
+  /** Native date inputs need min-w-0 chain so mobile controls stay inside cards. */
+  .input-date {
+    @apply mt-1 box-border w-full min-w-0 max-w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-base text-bob-ink;
+  }
 }
 
 a.wordmark-title {
