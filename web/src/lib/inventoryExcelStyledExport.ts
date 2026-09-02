@@ -28,7 +28,9 @@ type ExportFieldKey =
   | "status"
   | "notes"
   | "targetQty"
-  | "projected";
+  | "projected"
+  | "imageUrl"
+  | "hidden";
 
 function cellPlainText(cell: ExcelJS.Cell): string {
   const v = cell.value;
@@ -125,6 +127,8 @@ function writeRowValues(
   set("notes", row.notes ?? "");
   set("targetQty", row.targetQty);
   set("projected", row.projected);
+  set("imageUrl", row.imageUrl ?? "");
+  set("hidden", row.hidden ? "yes" : "");
 }
 
 /** Category + status “pills” and numeric alignment — matches web list semantics. */
@@ -270,6 +274,8 @@ const FALLBACK_HEADERS: { key: ExportFieldKey; label: string; width: number }[] 
     { key: "notes", label: "Notes", width: 40 },
     { key: "targetQty", label: "Target", width: 10 },
     { key: "projected", label: "Projected", width: 12 },
+    { key: "imageUrl", label: "Image", width: 40 },
+    { key: "hidden", label: "Hidden", width: 10 },
   ];
 
 async function buildFallbackStyledWorkbook(
@@ -323,6 +329,8 @@ async function buildFallbackStyledWorkbook(
       notes: r.notes ?? "",
       targetQty: r.targetQty,
       projected: r.projected,
+      imageUrl: r.imageUrl ?? "",
+      hidden: r.hidden ? "yes" : "",
     });
     excelRow.height = 20;
     const zebraBg = i % 2 === 1 ? ROW_GRAY : "FFFFFFFF";
@@ -362,7 +370,7 @@ async function buildFallbackStyledWorkbook(
         cell.alignment = {
           vertical: "middle",
           horizontal: right ? "right" : "left",
-          wrapText: h.key === "notes" || h.key === "name",
+          wrapText: h.key === "notes" || h.key === "name" || h.key === "imageUrl",
         };
       }
       cell.border = { bottom: rowDivider };

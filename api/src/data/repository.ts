@@ -11,6 +11,7 @@ import type {
   ContributionRequest,
   RequestStatus,
   UserProfile,
+  OrgSettings,
 } from "../domain/types.js";
 import { ORG } from "../domain/requestService.js";
 
@@ -163,6 +164,15 @@ export async function deleteRequest(id: string): Promise<void> {
   );
 }
 
+/** Deletes every contribution request. Returns how many were removed. */
+export async function deleteAllRequests(): Promise<number> {
+  const all = await listAllRequests();
+  for (const r of all) {
+    await deleteRequest(r.id);
+  }
+  return all.length;
+}
+
 export async function listRequestsByUser(userId: string): Promise<ContributionRequest[]> {
   const all = await listAllRequests();
   return all.filter((r) => r.userId === userId);
@@ -214,6 +224,60 @@ export async function putUserProfile(input: {
   return profile;
 }
 
+export async function listUserProfiles(): Promise<UserProfile[]> {
+  const out = await client.send(
+    new QueryCommand({
+      TableName: tableName(),
+      IndexName: "GSI1",
+      KeyConditionExpression: "gsi1pk = :gpk",
+      ExpressionAttributeValues: { ":gpk": "USER_PROFILE" },
+    }),
+  );
+  return (out.Items ?? []).map((raw) =>
+    userProfileFromAttrs(raw as Record<string, unknown>),
+  );
+}
+
+export async function getOrgSettings(): Promise<OrgSettings | null> {
+  const out = await client.send(
+    new GetCommand({
+      TableName: tableName(),
+      Key: { pk: PK, sk: "SETTINGS" },
+    }),
+  );
+  if (!out.Item) return null;
+  const raw = out.Item as Record<string, unknown>;
+  const eventDate = String(raw.eventDate ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) return null;
+  return {
+    eventDate,
+    updatedAt: String(raw.updatedAt ?? ""),
+  };
+}
+
+export async function putOrgSettings(eventDate: string): Promise<OrgSettings> {
+  const trimmed = eventDate.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    throw new Error("eventDate must be YYYY-MM-DD");
+  }
+  const settings: OrgSettings = {
+    eventDate: trimmed,
+    updatedAt: new Date().toISOString(),
+  };
+  await client.send(
+    new PutCommand({
+      TableName: tableName(),
+      Item: {
+        pk: PK,
+        sk: "SETTINGS",
+        entityType: "ORG_SETTINGS",
+        ...settings,
+      },
+    }),
+  );
+  return settings;
+}
+
 function userProfileAttrs(p: UserProfile) {
   return {
     userId: p.userId,
@@ -250,6 +314,8 @@ function entityAttrs(e: ItemEntity) {
   if (e.price != null && Number.isFinite(e.price)) {
     out.price = e.price;
   }
+  if (e.imageUrl) out.imageUrl = e.imageUrl;
+  if (e.hidden) out.hidden = true;
   return out;
 }
 
@@ -267,6 +333,8 @@ function itemFromAttrs(raw: Record<string, unknown>): ItemEntity {
     targetQty: Number(raw.targetQty ?? 0),
     price,
     notes: raw.notes ? String(raw.notes) : undefined,
+    imageUrl: raw.imageUrl ? String(raw.imageUrl) : undefined,
+    hidden: raw.hidden === true,
     sortPriority: Number(raw.sortPriority ?? 0),
     createdAt: String(raw.createdAt),
     updatedAt: String(raw.updatedAt),
@@ -287,13 +355,18 @@ function requestAttrs(r: ContributionRequest) {
 }
 
 function requestFromAttrs(raw: Record<string, unknown>): ContributionRequest {
+  const rawLines = (raw.lines as ContributionRequest["lines"]) ?? [];
   return {
     id: String(raw.id),
     userId: String(raw.userId),
     userName: String(raw.userName),
     userEmail: raw.userEmail ? String(raw.userEmail) : undefined,
     status: raw.status as RequestStatus,
-    lines: (raw.lines as ContributionRequest["lines"]) ?? [],
+    lines: rawLines.map((l) => ({
+      itemId: String(l.itemId),
+      qty: Number(l.qty),
+      ...(l.itemName ? { itemName: String(l.itemName) } : {}),
+    })),
     createdAt: String(raw.createdAt),
     updatedAt: String(raw.updatedAt),
   };

@@ -1,6 +1,6 @@
 import type { ContributionRequest, RequestLine, RequestStatus } from "./types.js";
 
-/** Pending (and received-not-finalized) counts toward projected; rejected does not. */
+/** Only pending requests count toward projected totals. */
 export function lineCountsTowardProjection(status: RequestStatus): boolean {
   return status === "pending";
 }

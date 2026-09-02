@@ -14,6 +14,8 @@ export type InventoryExportRow = {
   onHand: number;
   projected: number;
   notes?: string;
+  imageUrl?: string;
+  hidden?: boolean;
 };
 
 export function exportStatusLabel(row: {
@@ -45,6 +47,8 @@ const HEADERS = [
   "Notes",
   "Target",
   "Projected",
+  "Image",
+  "Hidden",
 ] as const;
 
 /** Same column order as export, tab-separated (paste into Excel / Sheets). */
@@ -62,6 +66,8 @@ export function inventoryToTsv(rows: InventoryExportRow[]): string {
         (it.notes ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " "),
         String(it.targetQty),
         String(it.projected),
+        (it.imageUrl ?? "").replace(/\t/g, " "),
+        it.hidden ? "yes" : "",
       ].join("\t"),
     ),
   ];

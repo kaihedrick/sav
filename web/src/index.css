@@ -133,7 +133,7 @@ body {
    * so box-shadow matches list cards when portaled over the dim layer + keyboard.
    */
   .quick-order-dialog {
-    @apply relative isolate w-full rounded-2xl border border-bob-mist/90 bg-bob-cream p-5 text-left shadow-md shadow-bob-wood/10 ring-1 ring-bob-mist/40;
+    @apply relative isolate w-full rounded-2xl border border-bob-mist/90 bg-bob-cream text-left shadow-md shadow-bob-wood/10 ring-1 ring-bob-mist/40;
   }
 
   .surface-glass-auth {

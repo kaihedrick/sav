@@ -1,8 +1,10 @@
-export type RequestStatus = "pending" | "rejected" | "received" | "not_brought";
+export type RequestStatus = "pending" | "received" | "not_brought";
 
 export interface RequestLine {
   itemId: string;
   qty: number;
+  /** Snapshot of catalog name at write time (also filled on read when missing). */
+  itemName?: string;
 }
 
 export interface ContributionRequest {
@@ -24,6 +26,10 @@ export interface ItemEntity {
   /** Optional reference / budget line (Excel “Price” column). */
   price?: number;
   notes?: string;
+  /** Public HTTP(S) photo URL for this catalog item. */
+  imageUrl?: string;
+  /** When true, the item is omitted from the public Needs list. */
+  hidden?: boolean;
   sortPriority: number;
   createdAt: string;
   updatedAt: string;
@@ -36,5 +42,11 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+/** Stored at sk SETTINGS */
+export interface OrgSettings {
+  eventDate: string;
   updatedAt: string;
 }

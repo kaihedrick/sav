@@ -16,9 +16,10 @@ import {
   mergeRequestUpdate,
   canContributorEdit,
   canContributorDelete,
+  withItemNames,
 } from "../domain/requestService.js";
 import { projectedQtyForItem, sortItemsByPriority } from "../domain/projections.js";
-import type { ItemEntity, RequestStatus } from "../domain/types.js";
+import type { ContributionRequest, ItemEntity, RequestStatus } from "../domain/types.js";
 import { randomUUID } from "node:crypto";
 import { notifyAdminRequest } from "../integrations/resend.js";
 import {
@@ -91,6 +92,7 @@ const ROUTE_ANCHOR_SEGMENTS = new Set([
   "admin",
   "my-requests",
   "community-requests",
+  "event",
 ]);
 
 function normalizePathForRouting(path: string): string {
@@ -270,6 +272,31 @@ export async function handleRequest(
       );
     }
 
+    if (path === "/event" && method === "GET") {
+      const settings = await repo.getOrgSettings();
+      return json(
+        200,
+        { eventDate: settings?.eventDate ?? null },
+        origin,
+      );
+    }
+
+    if (path === "/admin/event" && method === "PATCH") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      const body = JSON.parse(event.body || "{}");
+      const p = z
+        .object({ eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
+        .parse(body);
+      const settings = await repo.putOrgSettings(p.eventDate);
+      return json(200, settings, origin);
+    }
+
+    if (path === "/admin/users" && method === "GET") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      const users = await repo.listUserProfiles();
+      return json(200, { users }, origin);
+    }
+
     if (path === "/admin/inventory/sync-google-sheet" && method === "POST") {
       if (!admin) return json(403, { error: "Admin only" }, origin);
       if (!isGoogleSheetsSyncEnabled()) {
@@ -328,6 +355,8 @@ export async function handleRequest(
         targetQty: z.number().int().nonnegative(),
         price: z.number().finite().nonnegative().optional(),
         notes: z.string().optional(),
+        imageUrl: z.string().max(2000).optional(),
+        hidden: z.boolean().optional(),
         sortPriority: z.number().int().optional(),
       });
       const p = schema.parse(body);
@@ -340,6 +369,8 @@ export async function handleRequest(
         targetQty: p.targetQty,
         price: p.price,
         notes: p.notes,
+        imageUrl: normalizeImageUrl(p.imageUrl),
+        hidden: p.hidden === true,
         sortPriority: p.sortPriority ?? 0,
         createdAt: now,
         updatedAt: now,
@@ -361,6 +392,8 @@ export async function handleRequest(
         targetQty: z.number().int().nonnegative(),
         onHand: z.number().int().nonnegative(),
         notes: z.string().max(2000).optional(),
+        imageUrl: z.string().max(2000).optional(),
+        hidden: z.boolean().optional(),
         sortPriority: z.number().int().optional(),
       });
       const p = z
@@ -380,7 +413,9 @@ export async function handleRequest(
       for (let i = 0; i < p.items.length; i++) {
         const row = p.items[i];
         const existing =
-          row.itemId != null ? await repo.getItem(row.itemId) : null;
+          !p.replaceAll && row.itemId != null
+            ? await repo.getItem(row.itemId)
+            : null;
         if (existing) {
           const entity: ItemEntity = {
             ...existing,
@@ -393,6 +428,12 @@ export async function handleRequest(
               row.notes !== undefined
                 ? row.notes.trim() || undefined
                 : existing.notes,
+            imageUrl:
+              row.imageUrl !== undefined
+                ? normalizeImageUrl(row.imageUrl)
+                : existing.imageUrl,
+            hidden:
+              row.hidden !== undefined ? row.hidden : existing.hidden,
             sortPriority: row.sortPriority ?? existing.sortPriority,
             updatedAt: now,
           };
@@ -408,6 +449,8 @@ export async function handleRequest(
             targetQty: row.targetQty,
             price: row.price,
             notes: row.notes?.trim(),
+            imageUrl: normalizeImageUrl(row.imageUrl),
+            hidden: row.hidden === true,
             sortPriority: row.sortPriority ?? i,
             createdAt: now,
             updatedAt: now,
@@ -442,12 +485,18 @@ export async function handleRequest(
         targetQty: z.number().int().nonnegative().optional(),
         price: z.number().finite().nonnegative().optional(),
         notes: z.string().optional(),
+        imageUrl: z.string().max(2000).optional(),
+        hidden: z.boolean().optional(),
         sortPriority: z.number().int().optional(),
       });
       const p = schema.parse(body);
       const updated: ItemEntity = {
         ...existing,
         ...p,
+        imageUrl:
+          p.imageUrl !== undefined
+            ? normalizeImageUrl(p.imageUrl)
+            : existing.imageUrl,
         updatedAt: new Date().toISOString(),
       };
       await repo.putItem(updated);
@@ -477,7 +526,7 @@ export async function handleRequest(
     /* ---------- requests ---------- */
     if (path === "/my-requests" && method === "GET") {
       const mine = await repo.listRequestsByUser(user.sub);
-      return json(200, { requests: mine }, origin);
+      return json(200, { requests: await decorateRequests(mine) }, origin);
     }
 
     /** Other contributors’ requests (no email / userId); read-only for non-admins on the home page. */
@@ -486,7 +535,8 @@ export async function handleRequest(
       const others = all
         .filter((r) => r.userId !== user.sub)
         .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-      const requests = others.map((r) => ({
+      const decorated = await decorateRequests(others);
+      const requests = decorated.map((r) => ({
         id: r.id,
         userName: r.userName,
         status: r.status,
@@ -499,7 +549,14 @@ export async function handleRequest(
     if (path === "/admin/requests" && method === "GET") {
       if (!admin) return json(403, { error: "Admin only" }, origin);
       const all = await repo.listAllRequests();
-      return json(200, { requests: all }, origin);
+      return json(200, { requests: await decorateRequests(all) }, origin);
+    }
+
+    if (path === "/admin/requests" && method === "DELETE") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      const deleted = await repo.deleteAllRequests();
+      const sheetSync = await runGoogleSheetSync();
+      return json(200, { ok: true, deleted, ...sheetSync }, origin);
     }
 
     if (path === "/requests" && method === "POST") {
@@ -515,11 +572,12 @@ export async function handleRequest(
       const p = z.object({ lines: z.array(lineSchema).min(1) }).parse(body);
       const userName =
         `${prof.firstName.trim()} ${prof.lastName.trim()}`;
+      const namedLines = withItemNames(p.lines, await itemNameMap());
       const r = newRequest({
         userId: user.sub,
         userName,
         userEmail: user.email,
-        lines: p.lines,
+        lines: namedLines,
       });
       await repo.putRequest(r);
       await notifyAdminRequest({
@@ -541,7 +599,8 @@ export async function handleRequest(
       if (!canContributorEdit(existing, user.sub) && !admin) {
         return json(403, { error: "Forbidden" }, origin);
       }
-      const updated = mergeRequestUpdate(existing, p.lines, user.sub, admin);
+      const namedLines = withItemNames(p.lines, await itemNameMap());
+      const updated = mergeRequestUpdate(existing, namedLines, user.sub, admin);
       let toSave = updated;
       if (!admin) {
         const prof = await repo.getUserProfile(user.sub);
@@ -584,7 +643,7 @@ export async function handleRequest(
       if (!existing) return json(404, { error: "Not found" }, origin);
       const body = JSON.parse(event.body || "{}");
       const p = z
-        .object({ status: z.enum(["pending", "rejected", "received", "not_brought"]) })
+        .object({ status: z.enum(["pending", "received", "not_brought"]) })
         .parse(body);
       const updated = {
         ...existing,
@@ -633,7 +692,7 @@ export async function handleRequest(
       const items = await repo.listItems();
       const requests = await repo.listAllRequests();
       const lines = [
-        "itemId,name,category,price,targetQty,onHand,projected",
+        "itemId,name,category,price,targetQty,onHand,projected,imageUrl,hidden",
         ...(await Promise.all(
           items.map(async (it) => {
             const onHand = await repo.getStock(it.id);
@@ -648,6 +707,8 @@ export async function handleRequest(
               it.targetQty,
               onHand,
               projected,
+              csvEscape(it.imageUrl ?? ""),
+              it.hidden ? "true" : "",
             ].join(",");
           }),
         )),
@@ -671,13 +732,41 @@ export async function handleRequest(
   }
 }
 
-function summarizeLines(lines: { itemId: string; qty: number }[]): string {
-  return lines.map((l) => `${l.itemId.slice(0, 8)}… × ${l.qty}`).join(", ");
+function summarizeLines(
+  lines: { itemId: string; qty: number; itemName?: string }[],
+): string {
+  return lines
+    .map((l) => `${l.itemName ?? `${l.itemId.slice(0, 8)}…`} × ${l.qty}`)
+    .join(", ");
+}
+
+async function itemNameMap(): Promise<Map<string, string>> {
+  const items = await repo.listItems();
+  return new Map(items.map((it) => [it.id, it.name]));
+}
+
+async function decorateRequests(
+  requests: ContributionRequest[],
+): Promise<ContributionRequest[]> {
+  const names = await itemNameMap();
+  return requests.map((r) => ({
+    ...r,
+    lines: withItemNames(r.lines, names),
+  }));
 }
 
 function csvEscape(s: string): string {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
+}
+
+function normalizeImageUrl(v: string | undefined): string | undefined {
+  const t = (v ?? "").trim();
+  if (!t) return undefined;
+  if (!/^https?:\/\/\S+$/i.test(t)) {
+    throw new Error("Image URL must start with http:// or https://");
+  }
+  return t.slice(0, 2000);
 }
 
 /** Column A1 row for spreadsheets.values.update (matches web Excel export). */
@@ -691,6 +780,8 @@ const INVENTORY_SHEET_HEADER_ROW: string[] = [
   "Notes",
   "Target",
   "Projected",
+  "Image",
+  "Hidden",
 ];
 
 /** Header row + data rows for ValueRange.values (majorDimension ROWS). */
@@ -717,6 +808,8 @@ async function buildInventorySheetRows(): Promise<(string | number)[][]> {
       it.notes ?? "",
       it.targetQty,
       it.projected,
+      it.imageUrl ?? "",
+      it.hidden ? "yes" : "",
     ];
   });
   return [INVENTORY_SHEET_HEADER_ROW, ...dataRows];

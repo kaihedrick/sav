@@ -12,6 +12,8 @@ export type ParsedInventoryRow = {
   targetQty: number;
   onHand: number;
   notes?: string;
+  imageUrl?: string;
+  hidden?: boolean;
   sortPriority?: number;
 };
 
@@ -44,6 +46,29 @@ function asOptionalPrice(v: unknown): number | undefined {
   return n;
 }
 
+function asOptionalBool(v: unknown): boolean | undefined {
+  if (v == null || v === "") return undefined;
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number" && Number.isFinite(v)) return v !== 0;
+  const s = String(v).trim().toLowerCase();
+  if (!s) return undefined;
+  if (["1", "true", "yes", "y", "hidden", "hide"].includes(s)) return true;
+  if (["0", "false", "no", "n"].includes(s)) return false;
+  return undefined;
+}
+
+function parseImageUrl(v: unknown): string | undefined {
+  const s = String(v ?? "").trim();
+  if (!s) return undefined;
+  try {
+    const u = new URL(s);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return undefined;
+  } catch {
+    return undefined;
+  }
+  return s.slice(0, 2000);
+}
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,7 +83,8 @@ function parseItemId(v: unknown): string | undefined {
  * Matches your workbook: Item name, Type, Price, Stock, Status, Notes, …
  * **Projected** is ignored on import (live data from Dynamo / requests).
  * **Target** sets catalog targetQty (optional; defaults to 0 for new rows).
- * **Item ID** enables round-trip updates to existing items.
+ * **Image** / **Photo** is an http(s) URL shown as the item thumbnail.
+ * **Hidden** (yes/true) keeps the item out of the public Needs list.
  */
 export async function parseInventoryExcel(
   ab: ArrayBuffer,
@@ -101,6 +127,9 @@ export async function parseInventoryExcel(
     const notesRaw = getCell(row, INVENTORY_HEADER_ALIASES.notes);
     const notes = String(notesRaw ?? "").trim() || undefined;
 
+    const imageUrl = parseImageUrl(getCell(row, INVENTORY_HEADER_ALIASES.imageUrl));
+    const hidden = asOptionalBool(getCell(row, INVENTORY_HEADER_ALIASES.hidden));
+
     const sortRaw = getCell(row, INVENTORY_HEADER_ALIASES.sortPriority);
     let sortPriority: number | undefined;
     if (sortRaw !== "" && sortRaw != null) {
@@ -116,6 +145,8 @@ export async function parseInventoryExcel(
       targetQty,
       onHand,
       notes: notes?.slice(0, 2000),
+      imageUrl,
+      hidden,
       sortPriority: sortPriority ?? i,
     });
     i++;

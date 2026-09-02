@@ -81,15 +81,8 @@ export function CompleteProfilePage() {
     <Layout showNav={false}>
       <div className="surface-glass-auth mx-auto mt-10 max-w-md p-8">
         <h1 className="section-title text-center text-xl">Your name</h1>
-        <p className="mt-2 text-center text-sm text-bob-muted">
-          We use this so others can see who signed up to bring each item. This is
-          your first sign-in — add your first and last name as you’d like them
-          shown.
-        </p>
         {me?.email && (
-          <p className="mt-2 text-center text-xs text-bob-muted">
-            Signed in as <span className="font-medium text-bob-ink">{me.email}</span>
-          </p>
+          <p className="mt-2 text-center text-xs text-bob-muted">{me.email}</p>
         )}
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
           <div>

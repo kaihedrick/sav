@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    strictPort: true,
     // Lets Google Sign-In popups use postMessage back to the opener (some browsers / embedded shells set strict COOP).
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin-allow-popups",

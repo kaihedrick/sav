@@ -16,10 +16,11 @@ import { Link } from "react-router-dom";
 import {
   categoryAccent,
   inventoryGlassCardClass,
-  itemEmoji,
   stockLevelFromOnHand,
   stockStatusClasses,
 } from "../lib/inventoryCardStyle";
+import { InventoryBrowser } from "../components/InventoryBrowser";
+import { ItemThumb } from "../components/ItemThumb";
 
 function onUnsignedIntInputChange(
   set: (v: string) => void,
@@ -37,6 +38,8 @@ type InvItem = {
   targetQty: number;
   price?: number;
   notes?: string;
+  imageUrl?: string;
+  hidden?: boolean;
   onHand: number;
   projected: number;
 };
@@ -70,14 +73,15 @@ export function AdminDashboard() {
   const [name, setName] = useState("");
   const [targetQtyInput, setTargetQtyInput] = useState("0");
   const [category, setCategory] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [hidden, setHidden] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importErr, setImportErr] = useState<string | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
-  const [sheetSyncPending, setSheetSyncPending] = useState(false);
   const [editItem, setEditItem] = useState<InvItem | null>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
 
-  /** Full sheet rewrite (same as POST /admin/inventory/sync-google-sheet). Backs up inline API sync. */
+  /** Full sheet rewrite when API inline sync misses — not related to refreshing this page. */
   async function pushLiveGoogleSheet(): Promise<{ rowCount: number } | undefined> {
     try {
       const res = await apiJson<{ ok: boolean; rowCount: number }>(
@@ -94,19 +98,6 @@ export function AdminDashboard() {
     }
   }
 
-  async function manualSyncGoogleSheet() {
-    setImportMsg(null);
-    setSheetSyncPending(true);
-    try {
-      const r = await pushLiveGoogleSheet();
-      if (r) {
-        setImportMsg(`Google Sheet synced (${r.rowCount} rows).`);
-      }
-    } finally {
-      setSheetSyncPending(false);
-    }
-  }
-
   const createItem = useMutation({
     mutationFn: () => {
       const raw = targetQtyInput.trim();
@@ -115,7 +106,13 @@ export function AdminDashboard() {
       return apiJson("/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, category, targetQty }),
+        body: JSON.stringify({
+          name,
+          category,
+          targetQty,
+          imageUrl: imageUrl.trim() || undefined,
+          hidden,
+        }),
       });
     },
     onSuccess: async () => {
@@ -123,6 +120,8 @@ export function AdminDashboard() {
       setName("");
       setCategory("");
       setTargetQtyInput("0");
+      setImageUrl("");
+      setHidden(false);
       await pushLiveGoogleSheet();
     },
   });
@@ -198,7 +197,13 @@ export function AdminDashboard() {
 
   const patchItem = async (
     itemId: string,
-    patch: { name?: string; category?: string; targetQty?: number },
+    patch: {
+      name?: string;
+      category?: string;
+      targetQty?: number;
+      imageUrl?: string;
+      hidden?: boolean;
+    },
   ) => {
     const body = await apiJson<Record<string, unknown> & SheetSyncBody>(
       `/items/${itemId}`,
@@ -261,6 +266,8 @@ export function AdminDashboard() {
     onHand: it.onHand,
     projected: it.projected,
     notes: it.notes,
+    imageUrl: it.imageUrl,
+    hidden: it.hidden,
   }));
 
   async function downloadExcel() {
@@ -282,9 +289,9 @@ export function AdminDashboard() {
     setCopyMsg(null);
     try {
       await navigator.clipboard.writeText(inventoryToTsv(exportRows));
-      setCopyMsg("Copied table (tab-separated) — paste into Excel or Sheets.");
+      setCopyMsg("Copied");
     } catch {
-      setCopyMsg("Could not copy — try Export Excel instead.");
+      setCopyMsg("Copy failed");
     }
     setTimeout(() => setCopyMsg(null), 4000);
   }
@@ -294,14 +301,14 @@ export function AdminDashboard() {
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-bob-ink">
           <i className="fa-solid fa-screwdriver-wrench text-bob-gold" aria-hidden />
-          Admin — catalog & stock
+          Catalog
         </h1>
         <Link
           to="/admin/requests"
           className="inline-flex items-center justify-center gap-2 rounded-full bg-bob-gold px-4 py-2 text-center text-sm font-semibold text-white shadow-md shadow-bob-wood/15 transition-colors hover:bg-bob-gold-dark"
         >
           <i className="fa-solid fa-inbox" aria-hidden />
-          Open request inbox
+          Inbox
         </Link>
       </div>
 
@@ -310,20 +317,7 @@ export function AdminDashboard() {
           className="mb-6 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 shadow-sm"
           role="alert"
         >
-          <p className="font-medium text-amber-900">
-            Automatic Google Sheet sync is off
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
-            The API needs both spreadsheet ID and the service account secret (
-            <code className="rounded bg-white/80 px-1 font-mono text-[0.8rem]">
-              GoogleSheetsSecretArn
-            </code>{" "}
-            or{" "}
-            <code className="rounded bg-white/80 px-1 font-mono text-[0.8rem]">
-              GoogleSheetsSecretName
-            </code>
-            ). Redeploy SAM, then share the sheet with the service account email as Editor.
-          </p>
+          Google Sheet sync is off
         </div>
       ) : null}
 
@@ -333,12 +327,6 @@ export function AdminDashboard() {
           <i className="fa-solid fa-plus text-bob-gold" aria-hidden />
           Add item
         </h2>
-        <p className="mt-2 max-w-2xl text-xs text-bob-muted">
-          <strong className="font-medium text-bob-ink">Target</strong> is how many
-          units you want for this item in the drive. The public list sorts by how
-          far below that goal you still are (using on-hand stock and pending
-          requests).
-        </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <input
             className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
@@ -357,10 +345,25 @@ export function AdminDashboard() {
             inputMode="numeric"
             autoComplete="off"
             className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
-            placeholder="Target (goal units)"
+            placeholder="Target"
             value={targetQtyInput}
             onChange={onUnsignedIntInputChange(setTargetQtyInput)}
           />
+          <input
+            className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink placeholder:text-bob-muted focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+            placeholder="Image URL"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+          />
+          <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-bob-ink sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={!hidden}
+              onChange={(e) => setHidden(!e.target.checked)}
+              className="h-4 w-4 accent-bob-wood"
+            />
+            Public
+          </label>
           <button
             type="button"
             disabled={!name || createItem.isPending}
@@ -439,21 +442,6 @@ export function AdminDashboard() {
                 Open live sheet
               </a>
             ) : null}
-            {liveSheet.data && liveSheet.data.syncEnabled !== false ? (
-              <button
-                type="button"
-                disabled={sheetSyncPending || importExcel.isPending || liveSheet.isLoading}
-                className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                title="Push current inventory to the live Google Sheet"
-                onClick={() => void manualSyncGoogleSheet()}
-              >
-                <i
-                  className={`fa-solid ${sheetSyncPending ? "fa-spinner fa-spin" : "fa-arrows-rotate"} text-xs`}
-                  aria-hidden
-                />
-                {sheetSyncPending ? "Syncing…" : "Sync sheet"}
-              </button>
-            ) : null}
             <button
               type="button"
               className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
@@ -472,16 +460,6 @@ export function AdminDashboard() {
             </button>
           </div>
         </div>
-        {liveSheet.data?.url && liveSheet.data.syncEnabled !== false ? (
-          <p className="mb-2 text-xs text-bob-muted">
-            The shared Google Sheet is updated automatically on every change: stock,
-            targets, new items, Excel import, and request updates (no extra step).
-          </p>
-        ) : null}
-        <p className="mb-2 text-xs text-bob-muted">
-          Import Excel replaces the entire catalog: every existing item is removed, then
-          rows from your file are added (use Export Excel or your Google Sheet export).
-        </p>
         {copyMsg && (
           <p className="mb-2 text-sm text-bob-muted">{copyMsg}</p>
         )}
@@ -492,9 +470,12 @@ export function AdminDashboard() {
           <p className="mb-2 text-sm text-red-700">{importErr}</p>
         )}
         <div className="space-y-3">
-          {items.map((it) => (
-            <AdminInventoryCard key={it.id} it={it} onEdit={setEditItem} />
-          ))}
+          <InventoryBrowser
+            items={items}
+            renderItem={(it) => (
+              <AdminInventoryCard it={it} onEdit={setEditItem} />
+            )}
+          />
         </div>
       </section>
 
@@ -522,7 +503,13 @@ function InventoryEditModal({
   onClose: () => void;
   patchItem: (
     id: string,
-    p: { name?: string; category?: string; targetQty?: number },
+    p: {
+      name?: string;
+      category?: string;
+      targetQty?: number;
+      imageUrl?: string;
+      hidden?: boolean;
+    },
   ) => Promise<void>;
   setStock: (id: string, q: number) => Promise<void>;
   removeItem: (id: string, name: string) => Promise<boolean>;
@@ -532,6 +519,8 @@ function InventoryEditModal({
   const [category, setCategory] = useState("");
   const [targetQtyInput, setTargetQtyInput] = useState("0");
   const [onHandInput, setOnHandInput] = useState("0");
+  const [imageUrl, setImageUrl] = useState("");
+  const [showPublic, setShowPublic] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -540,6 +529,8 @@ function InventoryEditModal({
     setCategory(item.category ?? "");
     setTargetQtyInput(String(item.targetQty));
     setOnHandInput(String(item.onHand));
+    setImageUrl(item.imageUrl ?? "");
+    setShowPublic(!item.hidden);
   }, [item]);
 
   useEffect(() => {
@@ -564,11 +555,15 @@ function InventoryEditModal({
     const q = qRaw === "" ? 0 : Math.floor(Number(qRaw));
     if (!Number.isFinite(t) || t < 0 || !Number.isFinite(q) || q < 0) return;
     const cat = category.trim();
+    const img = imageUrl.trim();
+    const hidden = !showPublic;
     const stockChanged = q !== it.onHand;
     const metaChanged =
       n !== it.name ||
       cat !== (it.category ?? "").trim() ||
-      t !== it.targetQty;
+      t !== it.targetQty ||
+      img !== (it.imageUrl ?? "").trim() ||
+      hidden !== Boolean(it.hidden);
     if (!stockChanged && !metaChanged) {
       onClose();
       return;
@@ -577,11 +572,18 @@ function InventoryEditModal({
     try {
       if (stockChanged) await setStock(it.id, q);
       if (metaChanged) {
-        const patch: { name?: string; category?: string; targetQty?: number } =
-          {};
+        const patch: {
+          name?: string;
+          category?: string;
+          targetQty?: number;
+          imageUrl?: string;
+          hidden?: boolean;
+        } = {};
         if (n !== it.name) patch.name = n;
         if (cat !== (it.category ?? "").trim()) patch.category = cat;
         if (t !== it.targetQty) patch.targetQty = t;
+        if (img !== (it.imageUrl ?? "").trim()) patch.imageUrl = img;
+        if (hidden !== Boolean(it.hidden)) patch.hidden = hidden;
         if (Object.keys(patch).length > 0) {
           await patchItem(it.id, patch);
         }
@@ -606,17 +608,18 @@ function InventoryEditModal({
         aria-label="Close dialog"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-bob-mist bg-bob-cream p-5 shadow-2xl shadow-bob-wood/20">
-        <div className="mb-4 flex items-start justify-between gap-2">
-          <h2
-            id="inventory-edit-title"
-            className="text-lg font-semibold text-bob-ink"
-          >
-            Edit item
-          </h2>
+      <div className="relative z-10 max-h-[min(92svh,40rem)] w-full max-w-sm overflow-y-auto rounded-2xl border border-bob-mist bg-bob-cream shadow-2xl shadow-bob-wood/20">
+        <div className="relative">
+          <ItemThumb
+            name={name || item.name}
+            category={category || item.category}
+            imageUrl={imageUrl.trim() || undefined}
+            className="h-56 w-full rounded-none border-0 shadow-none sm:h-64"
+            emojiClassName="text-6xl"
+          />
           <button
             type="button"
-            className="rounded-full p-2 text-bob-muted hover:bg-bob-mist/80 hover:text-bob-ink"
+            className="absolute right-3 top-3 rounded-full border border-bob-mist/80 bg-bob-cream/90 p-2 text-bob-muted shadow-sm backdrop-blur-sm hover:bg-white hover:text-bob-ink"
             aria-label="Close"
             onClick={onClose}
           >
@@ -624,90 +627,117 @@ function InventoryEditModal({
           </button>
         </div>
 
-        <div className="grid gap-3">
-          <label className="block text-sm">
-            <span className="text-bob-muted">Name</span>
-            <input
-              className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="text-bob-muted">Category</span>
-            <input
-              className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              <span className="text-bob-muted">Target</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
-                value={targetQtyInput}
-                onChange={onUnsignedIntInputChange(setTargetQtyInput)}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-bob-muted">On hand</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
-                value={onHandInput}
-                onChange={onUnsignedIntInputChange(setOnHandInput)}
-              />
-            </label>
-          </div>
-          <p className="text-xs text-bob-muted">
-            Projected (from requests):{" "}
-            <span className="font-medium text-bob-magenta">{item.projected}</span>{" "}
-            — read-only here
-          </p>
-        </div>
+        <div className="p-5">
+          <h2
+            id="inventory-edit-title"
+            className="mb-4 text-lg font-semibold text-bob-ink"
+          >
+            {name.trim() || "Edit item"}
+          </h2>
 
-        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
-          <button
-            type="button"
-            className="order-3 rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-50 sm:order-1 sm:mr-auto"
-            disabled={saving}
-            onClick={() =>
-              void removeItem(item.id, item.name).then((did) => {
-                if (did) onClose();
-              })
-            }
-          >
-            Remove from catalog…
-          </button>
-          <button
-            type="button"
-            className="order-2 rounded-full border border-bob-mist px-4 py-2 text-sm font-medium text-bob-ink hover:bg-white"
-            disabled={saving}
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={saving || !name.trim()}
-            className="order-1 inline-flex items-center justify-center gap-2 rounded-full bg-bob-wood px-5 py-2 text-sm font-semibold text-white hover:bg-bob-ink disabled:opacity-50 sm:order-3"
-            onClick={() => void handleSave()}
-          >
-            {saving ? (
-              <i className="fa-solid fa-spinner fa-spin" aria-hidden />
-            ) : (
-              <i className="fa-solid fa-check" aria-hidden />
-            )}
-            Save changes
-          </button>
+          <div className="grid gap-3">
+            <label className="block text-sm">
+              <span className="text-bob-muted">Name</span>
+              <input
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-bob-muted">Category</span>
+              <input
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-bob-muted">Image URL</span>
+              <input
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://…"
+                autoComplete="off"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-bob-ink">
+              <input
+                type="checkbox"
+                checked={showPublic}
+                onChange={(e) => setShowPublic(e.target.checked)}
+                className="h-4 w-4 accent-bob-wood"
+              />
+              Public
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm">
+                <span className="text-bob-muted">Target</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+                  value={targetQtyInput}
+                  onChange={onUnsignedIntInputChange(setTargetQtyInput)}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="text-bob-muted">On hand</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink focus:border-bob-gold focus:outline-none focus:ring-2 focus:ring-bob-gold/25"
+                  value={onHandInput}
+                  onChange={onUnsignedIntInputChange(setOnHandInput)}
+                />
+              </label>
+            </div>
+            <p className="text-xs text-bob-muted">
+              Projected:{" "}
+              <span className="font-medium text-bob-magenta">{item.projected}</span>
+            </p>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+            <button
+              type="button"
+              className="order-3 rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-50 sm:order-1 sm:mr-auto"
+              disabled={saving}
+              onClick={() =>
+                void removeItem(item.id, item.name).then((did) => {
+                  if (did) onClose();
+                })
+              }
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              className="order-2 rounded-full border border-bob-mist px-4 py-2 text-sm font-medium text-bob-ink hover:bg-white"
+              disabled={saving}
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={saving || !name.trim()}
+              className="order-1 inline-flex items-center justify-center gap-2 rounded-full bg-bob-wood px-5 py-2 text-sm font-semibold text-white hover:bg-bob-ink disabled:opacity-50 sm:order-3"
+              onClick={() => void handleSave()}
+            >
+              {saving ? (
+                <i className="fa-solid fa-spinner fa-spin" aria-hidden />
+              ) : (
+                <i className="fa-solid fa-check" aria-hidden />
+              )}
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -724,7 +754,6 @@ function AdminInventoryCard({
   const accent = categoryAccent(it.category || "General");
   const level = stockLevelFromOnHand(it.onHand);
   const status = stockStatusClasses(level);
-  const emoji = itemEmoji(it.name, it.category);
 
   return (
     <article
@@ -753,30 +782,32 @@ function AdminInventoryCard({
         <i className="fa-solid fa-pen-to-square text-lg" aria-hidden />
       </button>
       <div className="relative z-10 flex flex-wrap items-start gap-3 pr-10">
-        <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-bob-mist bg-white/80 text-2xl shadow-sm"
-          aria-hidden
-        >
-          {emoji}
-        </span>
+        <ItemThumb
+          name={it.name}
+          category={it.category}
+          imageUrl={it.imageUrl}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold text-bob-ink">{it.name}</h2>
-            {(it.category || "").trim() ? (
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${accent.pillGlass}`}
-              >
-                {it.category}
-              </span>
-            ) : null}
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.pillClass}`}
+            >
+              {status.label}
+            </span>
           </div>
+          {(it.category || "").trim() ? (
+            <p className="mt-0.5 text-xs text-bob-muted">{it.category}</p>
+          ) : null}
+          {it.hidden ? (
+            <p className="mt-0.5 text-xs font-medium text-amber-800">Hidden</p>
+          ) : null}
           {it.price != null && Number.isFinite(it.price) ? (
             <p className="mt-0.5 text-xs text-bob-muted">
               <i className="fa-solid fa-tag mr-1 opacity-70" aria-hidden />
               ${it.price}
             </p>
           ) : null}
-          <p className={`mt-1 text-sm ${status.textClassOnCard}`}>{status.label}</p>
           <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-bob-muted">

@@ -1,6 +1,6 @@
 export type UserRole = "admin" | "contributor";
 
-export type RequestStatus = "pending" | "rejected" | "received" | "not_brought";
+export type RequestStatus = "pending" | "received" | "not_brought";
 
 export interface Item {
   id: string;
@@ -8,6 +8,8 @@ export interface Item {
   category: string;
   targetQty: number;
   notes?: string;
+  imageUrl?: string;
+  hidden?: boolean;
   sortPriority: number;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +23,8 @@ export interface StockRow {
 export interface RequestLine {
   itemId: string;
   qty: number;
+  /** Snapshot of catalog name at write time (also filled on read when missing). */
+  itemName?: string;
 }
 
 export interface ContributionRequest {

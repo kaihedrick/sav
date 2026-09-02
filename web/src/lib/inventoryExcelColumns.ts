@@ -14,6 +14,8 @@ export type InventoryColumnField =
   | "onHand"
   | "targetQty"
   | "notes"
+  | "imageUrl"
+  | "hidden"
   | "sortPriority"
   | "status"
   | "projected";
@@ -36,6 +38,22 @@ export const INVENTORY_HEADER_ALIASES: Record<
     "target quantity",
   ],
   notes: ["notes", "note", "comments", "remark"],
+  imageUrl: [
+    "image",
+    "image url",
+    "imageurl",
+    "photo",
+    "photo url",
+    "photourl",
+    "picture",
+    "link",
+  ],
+  hidden: [
+    "hidden",
+    "hide",
+    "hide from public",
+    "hidden from public",
+  ],
   sortPriority: [
     "sortpriority",
     "sort priority",

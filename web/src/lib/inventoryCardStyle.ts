@@ -14,6 +14,7 @@ export function stockStatusClasses(level: StockLevel): {
   textClass: string;
   /** Status line on dusty-rose card (`bg-bob-card`). */
   textClassOnCard: string;
+  pillClass: string;
 } {
   switch (level) {
     case "out":
@@ -21,18 +22,21 @@ export function stockStatusClasses(level: StockLevel): {
         label: "Out of stock",
         textClass: "font-semibold text-red-600",
         textClassOnCard: "font-semibold text-red-700",
+        pillClass: "bg-red-50 text-red-700",
       };
     case "low":
       return {
         label: "Low stock",
         textClass: "font-semibold text-amber-600",
         textClassOnCard: "font-semibold text-amber-700",
+        pillClass: "bg-amber-50 text-amber-800",
       };
     default:
       return {
         label: "In stock",
         textClass: "font-semibold text-emerald-700",
         textClassOnCard: "font-semibold text-emerald-800",
+        pillClass: "bg-emerald-50 text-emerald-800",
       };
   }
 }

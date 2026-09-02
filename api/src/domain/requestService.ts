@@ -1,4 +1,4 @@
-import type { ContributionRequest, RequestLine, RequestStatus } from "./types.js";
+import type { ContributionRequest, RequestLine } from "./types.js";
 import { randomUUID } from "node:crypto";
 
 const ORG = "ORG#default";
@@ -9,7 +9,7 @@ export function canContributorEdit(r: ContributionRequest, userId: string): bool
 
 export function canContributorDelete(r: ContributionRequest, userId: string): boolean {
   if (r.userId !== userId) return false;
-  return r.status === "pending" || r.status === "rejected";
+  return r.status === "pending";
 }
 
 /** After event, only pending-like might be locked — allow admin to set received */
@@ -19,6 +19,17 @@ export function assertLinesPositive(lines: RequestLine[]): void {
       throw new Error("Each line needs itemId and qty >= 1");
     }
   }
+}
+
+export function withItemNames(
+  lines: RequestLine[],
+  nameById: Map<string, string>,
+): RequestLine[] {
+  return lines.map((l) => ({
+    itemId: l.itemId,
+    qty: l.qty,
+    itemName: nameById.get(l.itemId) ?? l.itemName ?? "Unknown item",
+  }));
 }
 
 export function newRequest(input: {
