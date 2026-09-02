@@ -72,7 +72,7 @@ export function Layout({
         }`}
       >
         {showNav && (
-          <header className="layout-header-chrome sticky top-0 z-20 border-b border-bob-mist/60 bg-bob-cream/45 pt-[env(safe-area-inset-top,0px)] shadow-[0_8px_32px_-12px_rgba(93,64,55,0.14)] backdrop-blur-xl backdrop-saturate-150">
+          <header className="layout-header-chrome layout-chrome-glass sticky top-0 z-20 border-b border-bob-mist/60 pt-[env(safe-area-inset-top,0px)] shadow-[0_8px_32px_-12px_rgba(93,64,55,0.14)]">
             <div className="mx-auto flex min-h-[52px] max-w-3xl flex-col items-center justify-center px-safe py-2 sm:min-h-[60px] md:max-w-5xl">
               <Link
                 to="/"
@@ -142,7 +142,7 @@ export function Layout({
           ) : null}
 
           <nav
-            className="fixed bottom-0 left-0 right-0 z-30 border-t border-bob-mist/70 bg-bob-cream/90 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-8px_32px_-16px_rgba(93,64,55,0.18)] backdrop-blur-xl backdrop-saturate-150"
+            className="layout-chrome-glass fixed bottom-0 left-0 right-0 z-30 border-t border-bob-mist/60 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-8px_32px_-12px_rgba(93,64,55,0.14)]"
             aria-label="Main"
           >
             <div className="mx-auto flex max-w-3xl items-stretch px-1 md:max-w-5xl">

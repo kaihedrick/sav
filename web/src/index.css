@@ -112,6 +112,11 @@ body {
     @apply text-bob-ink;
   }
 
+  /** Frosted chrome shared by header + bottom nav (liquid glass). */
+  .layout-chrome-glass {
+    @apply bg-bob-cream/45 backdrop-blur-xl backdrop-saturate-150;
+  }
+
   /**
    * Status bar / notch region: same frosted tint as the header so WebKit shows it
    * behind the clock & battery (backdrop on the header alone often skips this band).

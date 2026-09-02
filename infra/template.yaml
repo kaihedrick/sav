@@ -123,12 +123,10 @@ Resources:
         # List form (not !Split/!If) so SAM actually writes CorsConfiguration on the HTTP API.
         AllowOrigins:
           - !Ref AppBaseUrl
+          - https://bagsofblessings.net
+          - https://sav-nu.vercel.app
           - http://localhost:5173
           - http://127.0.0.1:5173
-          - !If
-            - HasExtraCorsOrigins
-            - !Ref ExtraCorsOrigins
-            - !Ref AWS::NoValue
         MaxAge: 600
 
   ApiFunction:
