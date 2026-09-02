@@ -6,6 +6,7 @@ import { CompleteProfilePage } from "./pages/CompleteProfilePage";
 import { HomePage } from "./pages/HomePage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminRequestsPage } from "./pages/AdminRequestsPage";
+import { AdminAccessPage } from "./pages/AdminAccessPage";
 import { getIdToken } from "./lib/tokens";
 import { isAdminFromToken } from "./lib/sessionJwt";
 
@@ -62,6 +63,18 @@ export function App() {
             <ProfileGate>
               <RequireAdmin>
                 <AdminRequestsPage />
+              </RequireAdmin>
+            </ProfileGate>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/access"
+        element={
+          <RequireAuth>
+            <ProfileGate>
+              <RequireAdmin>
+                <AdminAccessPage />
               </RequireAdmin>
             </ProfileGate>
           </RequireAuth>

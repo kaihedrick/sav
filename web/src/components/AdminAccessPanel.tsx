@@ -97,9 +97,9 @@ export function AdminAccessPanel() {
   }
 
   return (
-    <div className="rounded-xl border border-bob-mist/80 bg-white/50 px-3 py-3">
+    <div>
       <p className="text-xs font-semibold uppercase tracking-wider text-bob-wood/90">
-        Admin access
+        Grant by email
       </p>
       <p className="mt-1 text-xs text-bob-muted">
         Grant admin by email or tap a member below. No notification is sent.

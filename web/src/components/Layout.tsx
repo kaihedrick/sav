@@ -2,7 +2,6 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { StaticPageBackground } from "./StaticPageBackground";
-import { AdminAccessPanel } from "./AdminAccessPanel";
 import { clearTokens } from "../lib/tokens";
 import { apiJson } from "../lib/api";
 
@@ -115,9 +114,16 @@ export function Layout({
               </div>
               <div className="max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain p-2">
                 {isAdmin ? (
-                  <div className="mb-2">
-                    <AdminAccessPanel />
-                  </div>
+                  <Link
+                    to="/admin/access"
+                    className="flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-3 text-base font-semibold text-bob-ink hover:bg-bob-mist/60"
+                    onClick={() => setMoreOpen(false)}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bob-wood/10 text-bob-wood">
+                      <i className="fa-solid fa-user-shield" aria-hidden />
+                    </span>
+                    Admin access
+                  </Link>
                 ) : null}
                 {sheetUrl ? (
                   <a
