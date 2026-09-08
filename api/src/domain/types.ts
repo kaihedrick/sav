@@ -41,6 +41,8 @@ export interface UserProfile {
   email: string;
   firstName: string;
   lastName: string;
+  /** When true (default), admin receives request/purchase emails. */
+  emailNotifyRequests: boolean;
   createdAt: string;
   updatedAt: string;
 }

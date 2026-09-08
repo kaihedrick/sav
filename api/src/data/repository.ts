@@ -196,6 +196,7 @@ export async function putUserProfile(input: {
   email: string;
   firstName: string;
   lastName: string;
+  emailNotifyRequests?: boolean;
 }): Promise<UserProfile> {
   const existing = await getUserProfile(input.userId);
   const now = new Date().toISOString();
@@ -205,6 +206,8 @@ export async function putUserProfile(input: {
     email: input.email.trim(),
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
+    emailNotifyRequests:
+      input.emailNotifyRequests ?? existing?.emailNotifyRequests ?? true,
     createdAt,
     updatedAt: now,
   };
@@ -329,6 +332,7 @@ export async function touchUserOnLogin(input: {
     email: input.email.trim(),
     firstName,
     lastName,
+    emailNotifyRequests: existing?.emailNotifyRequests ?? true,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
@@ -348,6 +352,21 @@ export async function touchUserOnLogin(input: {
   return profile;
 }
 
+/** Admin emails that want request/purchase notification emails (default on). */
+export async function adminEmailsWantingRequestNotify(
+  adminEmails: string[],
+): Promise<string[]> {
+  if (adminEmails.length === 0) return [];
+  const profiles = await listUserProfiles();
+  const byEmail = new Map(
+    profiles.map((p) => [p.email.toLowerCase().trim(), p] as const),
+  );
+  return adminEmails.filter((addr) => {
+    const p = byEmail.get(addr);
+    return p ? p.emailNotifyRequests !== false : true;
+  });
+}
+
 export async function putOrgSettings(eventDate: string): Promise<OrgSettings> {
   const trimmed = eventDate.trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
@@ -365,6 +384,7 @@ function userProfileAttrs(p: UserProfile) {
     email: p.email,
     firstName: p.firstName,
     lastName: p.lastName,
+    emailNotifyRequests: p.emailNotifyRequests !== false,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };
@@ -376,6 +396,7 @@ function userProfileFromAttrs(raw: Record<string, unknown>): UserProfile {
     email: String(raw.email ?? ""),
     firstName: String(raw.firstName ?? ""),
     lastName: String(raw.lastName ?? ""),
+    emailNotifyRequests: raw.emailNotifyRequests !== false,
     createdAt: String(raw.createdAt ?? ""),
     updatedAt: String(raw.updatedAt ?? ""),
   };

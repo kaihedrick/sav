@@ -238,6 +238,8 @@ export async function handleRequest(
           firstName: profile?.firstName ?? "",
           lastName: profile?.lastName ?? "",
           needsProfile,
+          emailNotifyRequests: profile?.emailNotifyRequests !== false,
+          isAdmin: admin,
         },
         origin,
       );
@@ -247,18 +249,34 @@ export async function handleRequest(
       const body = JSON.parse(event.body || "{}");
       const p = z
         .object({
-          firstName: z.string().trim().min(1).max(80),
-          lastName: z.string().trim().min(1).max(80),
+          firstName: z.string().trim().min(1).max(80).optional(),
+          lastName: z.string().trim().min(1).max(80).optional(),
+          emailNotifyRequests: z.boolean().optional(),
         })
         .parse(body);
       if (!user.email) {
         return json(400, { error: "Email missing from session" }, origin);
       }
+      const existing = await repo.getUserProfile(user.sub);
+      const firstName = p.firstName ?? existing?.firstName ?? "";
+      const lastName = p.lastName ?? existing?.lastName ?? "";
+      if (p.emailNotifyRequests !== undefined && !admin) {
+        return json(403, { error: "Admin only" }, origin);
+      }
+      if (
+        p.firstName !== undefined ||
+        p.lastName !== undefined
+      ) {
+        if (!firstName.trim() || !lastName.trim()) {
+          return json(400, { error: "firstName and lastName required" }, origin);
+        }
+      }
       const saved = await repo.putUserProfile({
         userId: user.sub,
         email: user.email,
-        firstName: p.firstName,
-        lastName: p.lastName,
+        firstName: firstName.trim() || existing?.firstName || "",
+        lastName: lastName.trim() || existing?.lastName || "",
+        emailNotifyRequests: p.emailNotifyRequests,
       });
       const displayName =
         `${saved.firstName} ${saved.lastName}`.trim();
@@ -272,7 +290,8 @@ export async function handleRequest(
         {
           accessToken,
           expiresIn: 7 * 24 * 3600,
-          needsProfile: false,
+          needsProfile: !saved.firstName.trim() || !saved.lastName.trim(),
+          emailNotifyRequests: saved.emailNotifyRequests !== false,
         },
         origin,
       );

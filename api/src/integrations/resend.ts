@@ -1,4 +1,6 @@
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import { allAdminEmails } from "../domain/adminService.js";
+import { adminEmailsWantingRequestNotify } from "../data/repository.js";
 
 let cachedKey: string | null = null;
 
@@ -28,26 +30,32 @@ export async function notifyAdminRequest(params: {
   const key = await getApiKey();
   if (!key) return { ok: false, error: "Resend not configured" };
 
-  const to = process.env.ADMIN_EMAIL;
+  const admins = await allAdminEmails();
+  const to = await adminEmailsWantingRequestNotify(admins);
+  if (to.length === 0) {
+    return { ok: true, error: "No admins opted in for request emails" };
+  }
+
   const from = process.env.RESEND_FROM ?? "Bags of Blessings <onboarding@resend.dev>";
   const base = process.env.APP_BASE_URL ?? "http://localhost:5173";
   const link = `${base.replace(/\/$/, "")}/admin/requests`;
 
-  if (!to) return { ok: false, error: "ADMIN_EMAIL not set" };
-
   const { Resend } = await import("resend");
   const resend = new Resend(key);
-  const subject = `Bags of Blessings: update from ${params.contributorName}`;
+  const who = params.contributorEmail
+    ? `${params.contributorName} (${params.contributorEmail})`
+    : params.contributorName;
+  const subject = `Bags of Blessings: ${params.contributorName} — ${params.summary}`;
   const html = `
-    <p><strong>${escapeHtml(params.contributorName)}</strong> submitted or updated a request.</p>
-    <p>${escapeHtml(params.summary)}</p>
+    <p><strong>${escapeHtml(who)}</strong> submitted or updated a purchase request.</p>
+    <p><strong>Items:</strong> ${escapeHtml(params.summary)}</p>
     <p><a href="${link}">Open request inbox</a></p>
   `;
 
   const { error } = await resend.emails.send({
     from,
-    to: [to],
-    subject,
+    to,
+    subject: subject.length > 120 ? subject.slice(0, 117) + "…" : subject,
     html,
   });
 
