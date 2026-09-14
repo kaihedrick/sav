@@ -21,6 +21,9 @@ import {
 } from "../lib/inventoryCardStyle";
 import { InventoryBrowser } from "../components/InventoryBrowser";
 import { ItemThumb } from "../components/ItemThumb";
+import { InventoryActionIcon } from "../components/InventoryActionIcon";
+
+const inventoryActionClass = "surface-glass-btn flex min-h-12 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold leading-tight sm:px-3 sm:text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bob-wood disabled:cursor-wait disabled:opacity-50";
 
 function onUnsignedIntInputChange(
   set: (v: string) => void,
@@ -80,6 +83,17 @@ export function AdminDashboard() {
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<InvItem | null>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
+
+  const pullLiveSheet = useMutation({
+    mutationFn: () => apiJson<{ updated: number }>("/admin/inventory/pull-google-sheet", { method: "POST" }),
+    onMutate: () => { setImportErr(null); setImportMsg(null); },
+    onSuccess: ({ updated }) => {
+      setImportMsg(updated ? `Updated ${updated} item${updated === 1 ? "" : "s"} from the live sheet.` : "Inventory already matches the live sheet.");
+    },
+    onError: (error) => setImportErr(error instanceof Error ? error.message : "Could not refresh from the live sheet."),
+    // A later batch can fail after earlier batches saved successfully.
+    onSettled: () => { void qc.invalidateQueries({ queryKey: ["inventory"] }); },
+  });
 
   /** Full sheet rewrite when API inline sync misses — not related to refreshing this page. */
   async function pushLiveGoogleSheet(): Promise<{ rowCount: number } | undefined> {
@@ -386,7 +400,7 @@ export function AdminDashboard() {
             <i className="fa-solid fa-boxes-stacked text-bob-gold" aria-hidden />
             Inventory
           </h2>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="group" aria-label="Inventory actions">
             <input
               ref={excelInputRef}
               type="file"
@@ -422,13 +436,12 @@ export function AdminDashboard() {
             <button
               type="button"
               disabled={importExcel.isPending}
-              className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+              className={inventoryActionClass}
+              title="Upload an Excel file to update inventory"
+              aria-busy={importExcel.isPending}
               onClick={() => excelInputRef.current?.click()}
             >
-              <i
-                className={`fa-solid ${importExcel.isPending ? "fa-spinner fa-spin" : "fa-file-import"} text-xs`}
-                aria-hidden
-              />
+              <InventoryActionIcon action="import" busy={importExcel.isPending} />
               {importExcel.isPending ? "Importing…" : "Import Excel"}
             </button>
             {liveSheet.data?.url ? (
@@ -436,30 +449,53 @@ export function AdminDashboard() {
                 href={liveSheet.data.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
+                className={inventoryActionClass}
+                title="Open the shared Google Sheet in a new tab"
               >
-                <i className="fa-solid fa-up-right-from-square text-xs" aria-hidden />
+                <InventoryActionIcon action="sheet" />
                 Open live sheet
               </a>
             ) : null}
+            {liveSheet.data?.syncEnabled ? (
+              <button
+                type="button"
+                disabled={pullLiveSheet.isPending || importExcel.isPending}
+                className={inventoryActionClass}
+                title="Bring live sheet edits into the website inventory"
+                aria-busy={pullLiveSheet.isPending}
+                onClick={() => pullLiveSheet.mutate()}
+              >
+                <InventoryActionIcon action="refresh" busy={pullLiveSheet.isPending} />
+                {pullLiveSheet.isPending ? "Refreshing…" : "Refresh from live sheet"}
+              </button>
+            ) : null}
             <button
               type="button"
-              className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
+              className={inventoryActionClass}
+              title="Download inventory as an Excel file"
               onClick={() => void downloadExcel()}
             >
-              <i className="fa-solid fa-file-export text-xs" aria-hidden />
+              <InventoryActionIcon action="export" />
               Export Excel
             </button>
             <button
               type="button"
-              className="surface-glass-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
+              className={inventoryActionClass}
+              title="Copy the inventory table to your clipboard"
               onClick={() => void copyInventoryTsv()}
             >
-              <i className="fa-solid fa-copy text-xs" aria-hidden />
+              <InventoryActionIcon action="copy" />
               Copy table
             </button>
           </div>
         </div>
+        {liveSheet.data?.syncEnabled ? (
+          <p className="mb-2 text-sm text-bob-muted">
+            After editing the sheet, refresh here to save changes to existing items.
+            Keep Item IDs unchanged; use Target for quantities needed. Projected stays automatic.
+            Refresh before making other website changes, which can overwrite sheet edits.
+          </p>
+        ) : null}
         {copyMsg && (
           <p className="mb-2 text-sm text-bob-muted">{copyMsg}</p>
         )}

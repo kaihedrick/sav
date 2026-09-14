@@ -27,7 +27,9 @@ import {
   clearAndWriteInventoryRows,
   getPublicSheetViewUrl,
   isGoogleSheetsSyncEnabled,
+  readInventoryRows,
 } from "../integrations/googleSheets.js";
+import { planLiveSheetImport } from "../domain/liveSheetImport.js";
 import {
   inventoryWebStatusLabel,
   itemDisplayNameForExport,
@@ -369,6 +371,30 @@ export async function handleRequest(
       await repo.removeOrgAdminEmail(normalized);
       const emails = await allAdminEmails();
       return json(200, { emails }, origin);
+    }
+
+    if (path === "/admin/inventory/pull-google-sheet" && method === "POST") {
+      if (!admin) return json(403, { error: "Admin only" }, origin);
+      if (!isGoogleSheetsSyncEnabled()) return json(503, { error: "Google Sheets sync is not configured." }, origin);
+      let values: unknown[][];
+      try { values = await readInventoryRows(); }
+      catch (error) { return json(502, { error: error instanceof Error ? error.message : "Could not read the live sheet." }, origin); }
+      const items = await repo.listItems();
+      const inventory = await Promise.all(items.map(async (item) => ({ ...item, onHand: await repo.getStock(item.id) })));
+      const changes = planLiveSheetImport(values, inventory);
+      let updated = 0;
+      try {
+        for (let i = 0; i < changes.length; i += 50) {
+          const batch = changes.slice(i, i + 50);
+          await repo.applySheetChanges(batch);
+          updated += batch.length;
+        }
+      } catch (error) {
+        console.error("[google-sheets] import save failed", error);
+        return json(409, { updated, error: `${updated} items updated before saving stopped. Inventory may have changed during refresh. Review Catalog and retry.` }, origin);
+      }
+      // Do not push back here: that could replace edits made in Sheets during this read.
+      return json(200, { ok: true, updated }, origin);
     }
 
     if (path === "/admin/inventory/sync-google-sheet" && method === "POST") {

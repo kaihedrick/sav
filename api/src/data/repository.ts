@@ -4,6 +4,7 @@ import {
   PutCommand,
   QueryCommand,
   DeleteCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import type {
@@ -14,6 +15,7 @@ import type {
   OrgSettings,
 } from "../domain/types.js";
 import { ORG } from "../domain/requestService.js";
+import type { SheetChange } from "../domain/liveSheetImport.js";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -114,6 +116,33 @@ export async function setStock(itemId: string, quantity: number): Promise<void> 
       },
     }),
   );
+}
+
+/** One batch is atomic; refuse to overwrite edits made since the import was planned. */
+export async function applySheetChanges(changes: SheetChange[]): Promise<void> {
+  if (!changes.length) return;
+  if (changes.length > 50) throw new Error("Sheet transaction supports at most 50 items.");
+  const now = new Date().toISOString();
+  await client.send(new TransactWriteCommand({
+    TransactItems: changes.flatMap(({ before, after }) => [{
+      Put: {
+        TableName: tableName(),
+        Item: { pk: PK, sk: `ITEM#${after.id}`, gsi1pk: "ITEM", gsi1sk: after.name,
+          ...entityAttrs({ ...after, updatedAt: now }) },
+        ConditionExpression: "updatedAt = :expected",
+        ExpressionAttributeValues: { ":expected": before.updatedAt },
+      },
+    }, {
+      Put: {
+        TableName: tableName(),
+        Item: { pk: PK, sk: `STOCK#${after.id}`, gsi1pk: "STOCK", gsi1sk: after.id,
+          itemId: after.id, quantity: after.onHand },
+        ConditionExpression: before.onHand === 0
+          ? "attribute_not_exists(quantity) OR quantity = :expected" : "quantity = :expected",
+        ExpressionAttributeValues: { ":expected": before.onHand },
+      },
+    }]),
+  }));
 }
 
 export async function listAllRequests(): Promise<ContributionRequest[]> {

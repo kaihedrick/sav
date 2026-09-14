@@ -108,6 +108,44 @@ export function isGoogleSheetsSyncEnabled(): boolean {
   return sheetsConfigured() != null;
 }
 
+/** Read evaluated cell values, including numeric formula results. Never writes to Sheets. */
+export async function readInventoryRows(): Promise<unknown[][]> {
+  const cfg = sheetsConfigured();
+  if (!cfg) throw new Error("Google Sheets is not configured");
+  const range = `'${cfg.tabName.replace(/'/g, "''")}'!A:Z`;
+  const query = new URLSearchParams({ majorDimension: "ROWS", valueRenderOption: "UNFORMATTED_VALUE" });
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.spreadsheetId}/values/${encodeURIComponent(range)}?${query}`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const token = await getAccessToken(cfg.secretArn);
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (response.status === 401) invalidateSheetsAccessTokenCache();
+      if (!response.ok) {
+        if ((response.status === 401 || isRetryableHttpStatus(response.status)) && attempt < 2) {
+          await sleep(backoffMs(attempt));
+          continue;
+        }
+        throw new Error(`Could not read the live sheet (${response.status}). Check the sheet tab and service account access.`);
+      }
+      const body = await response.json() as { values?: unknown };
+      const values = body.values ?? [];
+      if (!Array.isArray(values) || !values.every(Array.isArray)) throw new Error("Invalid live sheet response.");
+      return values;
+    } catch (error) {
+      if (attempt < 2 && error instanceof Error &&
+          (error instanceof TypeError || error.name === "TimeoutError")) {
+        await sleep(backoffMs(attempt));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("Could not read the live sheet. Try again.");
+}
+
 /**
  * Clears a fixed grid on the tab, then writes a full ValueRange (header row + data) from A1.
  * Ranges use A1 notation; sheet titles with spaces/special chars are wrapped in single quotes,

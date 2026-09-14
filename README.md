@@ -73,6 +73,32 @@ Open `http://localhost:5173` and use **Sign in with Google**.
 
 If an older stack had **Cognito**, deploying this template **removes** those resources. That can fail if something outside the template still references the user pool, or take a while while Cognito deletes. Prefer a clean stack name or remove dependent resources first if you hit update errors.
 
+## Refresh inventory from the shared Google Sheet
+
+Admins can use **Catalog → Refresh from live sheet** to read the configured
+Google Sheet into DynamoDB, then refresh the website inventory. This uses the
+existing spreadsheet ID, tab name, and service account secret; no new credentials
+are required. The API reads evaluated values using
+[Google Sheets values.get](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/get).
+
+- Keep **Item ID** unchanged. Refresh updates existing items only; create new items
+  in Catalog. Missing sheet rows do not delete database records.
+- Editable columns: Item name, Type, Price, Stock, Notes, Target, Image, Hidden.
+  Missing columns preserve existing values. Blank Stock/Target is an error (use 0).
+  Blank Price/Notes/Image clears that field; blank Hidden means visible.
+- **Projected** and **Status** are calculated fields and are ignored on import.
+- All rows are validated before saving. Updates use conditional transactions in
+  batches of 50 items. Concurrent database changes stop the affected batch;
+  a failure response reports how many items were already saved. Refresh is safe to retry.
+- This is a manual pull, not background synchronization. Existing website-to-sheet
+  writes still rewrite the sheet. Finish sheet edits and refresh from Catalog
+  before making website changes; other users' website activity can also overwrite
+  unsynced edits. Simultaneous editing in both places is not conflict-merged.
+- The pull endpoint is `POST /admin/inventory/pull-google-sheet` (admin session
+  required). The existing `sync-google-sheet` endpoint continues to push outward.
+
+Deploy both API and frontend for the button to work. No live data is imported by deployment.
+
 ## Local API (optional)
 
 Lambda-shaped handler can be run with a small local server later; for now use the deployed API or SAM local:
