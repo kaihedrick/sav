@@ -26,6 +26,14 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
+  ResendFrom:
+    Type: String
+    Default: "Bags of Blessings <notifications@bagsofblessings.net>"
+    Description: Sender address on your verified Resend domain.
+  ResendSecretArn:
+    Type: String
+    Default: ""
+    Description: Existing Secrets Manager secret containing apiKey; takes precedence over ResendApiKey.
   GoogleSheetsSpreadsheetId:
     Type: String
     Default: ""
@@ -52,6 +60,8 @@ Parameters:
 
 Conditions:
   HasResend: !Not [!Equals [!Ref ResendApiKey, ""]]
+  HasResendSecretArn: !Not [!Equals [!Ref ResendSecretArn, ""]]
+  HasResendConfiguration: !Or [!Condition HasResend, !Condition HasResendSecretArn]
   HasExtraCorsOrigins: !Not [!Equals [!Ref ExtraCorsOrigins, ""]]
   HasGoogleSheetsSheetId: !Not [!Equals [!Ref GoogleSheetsSpreadsheetId, ""]]
   HasGoogleSheetsSecretArn: !Not [!Equals [!Ref GoogleSheetsSecretArn, ""]]
@@ -150,8 +160,11 @@ Resources:
           SESSION_JWT_SECRET_ARN: !Ref SessionJwtSecret
           ADMIN_EMAIL: !Ref AdminEmail
           APP_BASE_URL: !Ref AppBaseUrl
-          RESEND_FROM: "Bags of Blessings <onboarding@resend.dev>"
-          RESEND_SECRET_ARN: !If [HasResend, !Ref ResendSecret, "none"]
+          RESEND_FROM: !Ref ResendFrom
+          RESEND_SECRET_ARN: !If
+            - HasResendSecretArn
+            - !Ref ResendSecretArn
+            - !If [HasResend, !Ref ResendSecret, "none"]
           GOOGLE_SHEETS_SPREADSHEET_ID: !If
             - HasGoogleSheets
             - !Ref GoogleSheetsSpreadsheetId
@@ -172,11 +185,11 @@ Resources:
               Action: [secretsmanager:GetSecretValue]
               Resource: !Ref SessionJwtSecret
         - !If
-          - HasResend
+          - HasResendConfiguration
           - Statement:
               - Effect: Allow
                 Action: [secretsmanager:GetSecretValue]
-                Resource: !Ref ResendSecret
+                Resource: !If [HasResendSecretArn, !Ref ResendSecretArn, !Ref ResendSecret]
           - !Ref AWS::NoValue
         - !If
           - HasGoogleSheets

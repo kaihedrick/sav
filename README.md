@@ -36,6 +36,13 @@ Parameters:
 - **AdminEmail** — matches Lambda `ADMIN_EMAIL` (Resend recipient + `role: admin` when the Google account email matches).
 - **AppBaseUrl** — e.g. `http://localhost:5173` for dev (CORS); include `http://localhost:5173` in Google origins even when this is your production URL.
 - **ResendApiKey** — optional at first; email notifications stay no-op until set.
+- **ResendSecretArn** — use an existing Secrets Manager secret instead of passing
+  a key during deployment. Store `{"apiKey":"YOUR_RESEND_KEY"}` (or a raw key).
+  This takes precedence over ResendApiKey and grants the API read access to that
+  secret only. Keep this parameter in your deployment configuration.
+- **ResendFrom** — defaults to `Bags of Blessings <notifications@bagsofblessings.net>`;
+  the sender domain must be verified in Resend. The key stays in the backend,
+  never in frontend or `VITE_` variables.
 
 The stack creates a **Secrets Manager** secret for the **HS256 session key** (`SESSION_JWT_SECRET_ARN` is wired to Lambda automatically).
 

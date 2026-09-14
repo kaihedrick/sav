@@ -1,6 +1,8 @@
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { allAdminEmails } from "../domain/adminService.js";
-import { adminEmailsWantingRequestNotify } from "../data/repository.js";
+import { adminEmailsWantingRequestNotify, getItem, getOrgSettings } from "../data/repository.js";
+import type { ContributionRequest } from "../domain/types.js";
+import { buildRequestEmail } from "../lib/requestEmail.js";
 
 let cachedKey: string | null = null;
 
@@ -23,9 +25,8 @@ async function getApiKey(): Promise<string | null> {
 }
 
 export async function notifyAdminRequest(params: {
-  contributorName: string;
-  contributorEmail?: string;
-  summary: string;
+  request: ContributionRequest;
+  updated?: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
   const key = await getApiKey();
   if (!key) return { ok: false, error: "Resend not configured" };
@@ -36,37 +37,38 @@ export async function notifyAdminRequest(params: {
     return { ok: true, error: "No admins opted in for request emails" };
   }
 
-  const from = process.env.RESEND_FROM ?? "Bags of Blessings <onboarding@resend.dev>";
+  const from = process.env.RESEND_FROM ?? "Bags of Blessings <notifications@bagsofblessings.net>";
   const base = process.env.APP_BASE_URL ?? "http://localhost:5173";
   const link = `${base.replace(/\/$/, "")}/admin/requests`;
 
   const { Resend } = await import("resend");
   const resend = new Resend(key);
-  const who = params.contributorEmail
-    ? `${params.contributorName} (${params.contributorEmail})`
-    : params.contributorName;
-  const subject = `Bags of Blessings: ${params.contributorName} — ${params.summary}`;
-  const html = `
-    <p><strong>${escapeHtml(who)}</strong> submitted or updated a purchase request.</p>
-    <p><strong>Items:</strong> ${escapeHtml(params.summary)}</p>
-    <p><a href="${link}">Open request inbox</a></p>
-  `;
+  const request = params.request;
+  const [settings, items] = await Promise.all([
+    getOrgSettings(),
+    Promise.all(request.lines.map(async (line) => {
+      const item = await getItem(line.itemId);
+      return { name: item?.name ?? line.itemName ?? "Item no longer in catalog",
+        quantity: line.qty, category: item?.category, imageUrl: item?.imageUrl };
+    })),
+  ]);
+  const content = buildRequestEmail({
+    contributorName: request.userName,
+    contributorEmail: request.userEmail,
+    requestId: request.id,
+    updated: params.updated === true,
+    eventDate: settings?.eventDate,
+    inboxUrl: link,
+    items,
+  });
 
   const { error } = await resend.emails.send({
     from,
     to,
-    subject: subject.length > 120 ? subject.slice(0, 117) + "…" : subject,
-    html,
+    ...content,
+    ...(request.userEmail ? { replyTo: request.userEmail } : {}),
   });
 
   if (error) return { ok: false, error: String(error.message ?? error) };
   return { ok: true };
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }

@@ -681,9 +681,7 @@ export async function handleRequest(
       });
       await repo.putRequest(r);
       await notifyAdminRequest({
-        contributorName: r.userName,
-        contributorEmail: r.userEmail,
-        summary: summarizeLines(r.lines),
+        request: r,
       });
       const sheetSync = await runGoogleSheetSync();
       return json(201, { ...r, ...sheetSync }, origin);
@@ -714,9 +712,8 @@ export async function handleRequest(
       await repo.putRequest(toSave);
       if (!admin) {
         await notifyAdminRequest({
-          contributorName: toSave.userName,
-          contributorEmail: toSave.userEmail,
-          summary: `Updated request: ${summarizeLines(toSave.lines)}`,
+          request: toSave,
+          updated: true,
         });
       }
       const sheetSyncReq = await runGoogleSheetSync();
@@ -830,14 +827,6 @@ export async function handleRequest(
     const msg = e instanceof Error ? e.message : "Error";
     return json(400, { error: msg }, origin);
   }
-}
-
-function summarizeLines(
-  lines: { itemId: string; qty: number; itemName?: string }[],
-): string {
-  return lines
-    .map((l) => `${l.itemName ?? `${l.itemId.slice(0, 8)}…`} × ${l.qty}`)
-    .join(", ");
 }
 
 async function itemNameMap(): Promise<Map<string, string>> {

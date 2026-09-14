@@ -880,19 +880,7 @@ function AdminInventoryCard({
               ${it.price}
             </p>
           ) : null}
-          <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-bob-muted">
-                <span className="inline-flex items-center gap-1">
-                  <i
-                    className="fa-solid fa-bullseye text-[0.7rem] opacity-70"
-                    aria-hidden
-                  />
-                  Target
-                </span>
-              </dt>
-              <dd className="font-medium text-bob-ink">{it.targetQty}</dd>
-            </div>
+          <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
             <div>
               <dt className="text-bob-muted">
                 <span className="inline-flex items-center gap-1">
@@ -912,7 +900,7 @@ function AdminInventoryCard({
                       : "text-emerald-800"
                 }`}
               >
-                {it.onHand}
+                {it.onHand} <span className="text-bob-muted">out of {it.targetQty}</span>
               </dd>
             </div>
             <div>

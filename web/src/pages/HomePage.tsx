@@ -233,7 +233,7 @@ export function HomePage() {
                         <dd
                           className={`font-medium ${level === "out" ? "text-red-700" : level === "low" ? "text-amber-700" : "text-emerald-800"}`}
                         >
-                          {it.onHand}
+                          {it.onHand} <span className="text-bob-muted">out of {it.targetQty}</span>
                         </dd>
                       </div>
                       <div>
