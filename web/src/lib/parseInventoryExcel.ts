@@ -8,6 +8,7 @@ export type ParsedInventoryRow = {
   itemId?: string;
   name: string;
   category: string;
+  packType?: string;
   price?: number;
   targetQty: number;
   onHand: number;
@@ -141,6 +142,7 @@ export async function parseInventoryExcel(
       itemId,
       name: name.slice(0, 500),
       category: category.slice(0, 200),
+      packType: String(getCell(row, INVENTORY_HEADER_ALIASES.packType) ?? "").trim().slice(0, 100) || undefined,
       price,
       targetQty,
       onHand,

@@ -21,6 +21,7 @@ import {
 } from "../lib/inventoryCardStyle";
 import { InventoryBrowser } from "../components/InventoryBrowser";
 import { ItemThumb } from "../components/ItemThumb";
+import { PackLabel } from "../components/PackLabel";
 import { InventoryActionIcon } from "../components/InventoryActionIcon";
 
 const inventoryActionClass = "surface-glass-btn flex min-h-12 min-w-0 items-center justify-start gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold leading-tight sm:px-3 sm:text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bob-wood disabled:cursor-wait disabled:opacity-50";
@@ -38,6 +39,7 @@ type InvItem = {
   id: string;
   name: string;
   category: string;
+  packType?: string;
   targetQty: number;
   price?: number;
   notes?: string;
@@ -76,6 +78,7 @@ export function AdminDashboard() {
   const [name, setName] = useState("");
   const [targetQtyInput, setTargetQtyInput] = useState("0");
   const [category, setCategory] = useState("");
+  const [packType, setPackType] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [hidden, setHidden] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
@@ -127,6 +130,7 @@ export function AdminDashboard() {
           name,
           category,
           targetQty,
+          packType: packType.trim(),
           imageUrl: imageUrl.trim() || undefined,
           hidden,
         }),
@@ -136,6 +140,7 @@ export function AdminDashboard() {
       qc.invalidateQueries({ queryKey: ["inventory"] });
       setName("");
       setCategory("");
+      setPackType("");
       setTargetQtyInput("0");
       setImageUrl("");
       setHidden(false);
@@ -168,7 +173,7 @@ export function AdminDashboard() {
       } else {
         setImportMsg(
           data.replaceAll
-            ? `Import · Catalog replaced (${data.deletedBefore ?? 0} previous items removed, ${data.created} imported)`
+            ? `Import · Catalog replaced (${data.deletedBefore ?? 0} previous items removed, ${data.total} imported)`
             : `Import · ${data.created} new, ${data.updated} updated (${data.total} rows)`,
         );
         setImportErr(null);
@@ -278,6 +283,7 @@ export function AdminDashboard() {
     id: it.id,
     name: it.name,
     category: it.category,
+    packType: it.packType,
     price: it.price,
     targetQty: it.targetQty,
     onHand: it.onHand,
@@ -363,6 +369,10 @@ export function AdminDashboard() {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           />
+          <label className="text-sm text-bob-muted">
+            Pack type
+            <input className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink" placeholder="Single, 12-pack, case of 24…" maxLength={100} value={packType} onChange={(e) => setPackType(e.target.value)} />
+          </label>
           <input
             type="text"
             inputMode="numeric"
@@ -503,7 +513,8 @@ export function AdminDashboard() {
         {liveSheet.data?.syncEnabled ? (
           <p className="mb-2 text-sm text-bob-muted">
             After editing the sheet, refresh here to save changes to existing items.
-            Keep Item IDs unchanged; use Target for quantities needed. Projected stays automatic.
+            Keep Item IDs unchanged. Target is the amount still needed and decreases with each commitment.
+            For a rollback, edit Target in the sheet and refresh here.
             Refresh before making other website changes, which can overwrite sheet edits.
           </p>
         ) : null}
@@ -589,6 +600,7 @@ function InventoryEditModal({
 }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
+  const [packType, setPackType] = useState("");
   const [targetQtyInput, setTargetQtyInput] = useState("0");
   const [onHandInput, setOnHandInput] = useState("0");
   const [imageUrl, setImageUrl] = useState("");
@@ -599,6 +611,7 @@ function InventoryEditModal({
     if (!item) return;
     setName(item.name);
     setCategory(item.category ?? "");
+    setPackType(item.packType ?? "");
     setTargetQtyInput(String(item.targetQty));
     setOnHandInput(String(item.onHand));
     setImageUrl(item.imageUrl ?? "");
@@ -633,6 +646,7 @@ function InventoryEditModal({
     const metaChanged =
       n !== it.name ||
       cat !== (it.category ?? "").trim() ||
+      packType.trim() !== (it.packType ?? "") ||
       t !== it.targetQty ||
       img !== (it.imageUrl ?? "").trim() ||
       hidden !== Boolean(it.hidden);
@@ -647,12 +661,14 @@ function InventoryEditModal({
         const patch: {
           name?: string;
           category?: string;
+          packType?: string;
           targetQty?: number;
           imageUrl?: string;
           hidden?: boolean;
         } = {};
         if (n !== it.name) patch.name = n;
         if (cat !== (it.category ?? "").trim()) patch.category = cat;
+        if (packType.trim() !== (it.packType ?? "")) patch.packType = packType.trim();
         if (t !== it.targetQty) patch.targetQty = t;
         if (img !== (it.imageUrl ?? "").trim()) patch.imageUrl = img;
         if (hidden !== Boolean(it.hidden)) patch.hidden = hidden;
@@ -745,6 +761,10 @@ function InventoryEditModal({
               />
               Public
             </label>
+            <label className="block text-sm text-bob-muted">
+              Pack type
+              <input className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-bob-ink" placeholder="Single, 12-pack, case of 24…" maxLength={100} value={packType} onChange={(e) => setPackType(e.target.value)} />
+            </label>
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
                 <span className="text-bob-muted">Target</span>
@@ -770,8 +790,7 @@ function InventoryEditModal({
               </label>
             </div>
             <p className="text-xs text-bob-muted">
-              Projected:{" "}
-              <span className="font-medium text-bob-magenta">{item.projected}</span>
+              Target decreases when people commit. Rollbacks are handled manually.
             </p>
           </div>
 
@@ -880,6 +899,7 @@ function AdminInventoryCard({
               ${it.price}
             </p>
           ) : null}
+          <PackLabel value={it.packType} />
           <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
             <div>
               <dt className="text-bob-muted">
@@ -900,7 +920,7 @@ function AdminInventoryCard({
                       : "text-emerald-800"
                 }`}
               >
-                {it.onHand} <span className="text-bob-muted">out of {it.targetQty}</span>
+                {it.onHand}
               </dd>
             </div>
             <div>
@@ -910,10 +930,10 @@ function AdminInventoryCard({
                     className="fa-solid fa-chart-line text-[0.7rem] opacity-70"
                     aria-hidden
                   />
-                  Projected
+                  Target
                 </span>
               </dt>
-              <dd className="font-medium text-bob-magenta">{it.projected}</dd>
+              <dd className="font-medium text-bob-magenta">{it.targetQty}</dd>
             </div>
           </dl>
         </div>

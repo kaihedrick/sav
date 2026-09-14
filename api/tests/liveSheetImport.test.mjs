@@ -68,6 +68,10 @@ const stubs = {
   "repository.js": `
     export const listItems = async () => globalThis.sheetTest.items;
     export const getStock = async id => globalThis.sheetTest.items.find(i => i.id === id).onHand;
+    export const putItem = async item => { (globalThis.sheetTest.savedItems ??= []).push(item); };
+    export const setStock = async (id, quantity) => { (globalThis.sheetTest.savedStock ??= []).push({ id, quantity }); };
+    export const deleteItem = async id => { (globalThis.sheetTest.deletedItems ??= []).push(id); };
+    export const deleteAllItems = async () => { globalThis.sheetTest.truncated = true; return globalThis.sheetTest.items.length; };
     export const applySheetChanges = async batch => {
       const state = globalThis.sheetTest;
       if (state.failBatch === state.batches.length) throw new Error('conflict');
@@ -91,7 +95,7 @@ const stubs = {
 };
 // Fail loudly if the pull path accidentally reaches an unrelated repository operation.
 for (const [, name] of readFileSync("src/data/repository.ts", "utf8").matchAll(/export async function (\w+)/g)) {
-  if (!["listItems", "getStock", "applySheetChanges"].includes(name)) {
+  if (!["listItems", "getStock", "applySheetChanges", "putItem", "setStock", "deleteItem", "deleteAllItems"].includes(name)) {
     stubs["repository.js"] += `export const ${name} = async () => { throw new Error('Unexpected repository call: ${name}'); };\n`;
   }
 }
@@ -144,4 +148,63 @@ test("partial batch failure reports saved count; unchanged sheet writes nothing"
   const state = reset({ values: [["Item ID", "Target"], ["a", 100]] });
   assert.equal(JSON.parse((await handleRequest(event)).body).updated, 0);
   assert.equal(state.batches.length, 0);
+});
+
+const catalogItem = { ...item, id: "3b2f7677-122f-4874-87bd-3a588736e004", imageUrl: "https://example.com/saved.jpg" };
+async function importRows(items, replaceAll = false) {
+  return handleRequest({ ...event, rawPath: "/admin/items/import", body: JSON.stringify({ items, replaceAll }) });
+}
+test("Excel import preserves photo and ID even for old clients sending replaceAll", async () => {
+  for (const withId of [false, true]) {
+    const state = reset({ configured: false, items: [catalogItem] });
+    const response = await importRows([{ ...(withId ? { itemId: catalogItem.id } : {}), name: "Soap", category: "Hygiene", onHand: 30, targetQty: 300 }], true);
+    assert.equal(response.statusCode, 200);
+    assert.equal(state.savedItems[0].id, catalogItem.id);
+    assert.equal(state.savedItems[0].imageUrl, catalogItem.imageUrl);
+    assert.equal(state.savedStock[0].quantity, 30);
+    assert.equal(state.truncated, true);
+    assert.equal(state.deletedItems, undefined);
+  }
+});
+test("Excel import accepts new photos; merge keeps omitted items", async () => {
+  const state = reset({ configured: false, items: [catalogItem, { ...catalogItem, id: "other", name: "Socks" }] });
+  const response = await importRows([{ name: "Soap", onHand: 30, targetQty: 300, imageUrl: "https://example.com/new.jpg" }]);
+  assert.equal(response.statusCode, 200);
+  assert.equal(state.savedItems[0].imageUrl, "https://example.com/new.jpg");
+  assert.equal(state.deletedItems, undefined);
+});
+test("ambiguous or invalid Excel imports cannot delete the existing catalog", async () => {
+  for (const row of [
+    { name: "Soap" },
+    { name: "New item", imageUrl: "javascript:alert(1)" },
+  ]) {
+    const state = reset({ configured: false, items: [catalogItem, { ...catalogItem, id: "other" }] });
+    const response = await importRows([{ ...row, onHand: 1, targetQty: 300 }], true);
+    assert.equal(response.statusCode, 400);
+    assert.equal(state.savedItems, undefined);
+    assert.equal(state.deletedItems, undefined);
+    assert.equal(state.truncated, undefined);
+  }
+});
+test("exported decorated names match without duplicating items", async () => {
+  const state = reset({ configured: false, items: [catalogItem] });
+  assert.equal((await importRows([{ name: "🧴 Soap", onHand: 1, targetQty: 300 }])).statusCode, 200);
+  assert.equal(state.savedItems[0].name, "Soap");
+  assert.equal(state.savedItems[0].imageUrl, catalogItem.imageUrl);
+});
+test("replacement imports assign a fresh ID to a new item", async () => {
+  const state = reset({ configured: false, items: [catalogItem] });
+  const result = await importRows([{ name: "New blankets", onHand: 0, targetQty: 300 }], true);
+  assert.equal(result.statusCode, 200);
+  assert.equal(state.truncated, true);
+  assert.match(state.savedItems[0].id, /^[0-9a-f-]{36}$/);
+  assert.notEqual(state.savedItems[0].id, catalogItem.id);
+  assert.equal(JSON.parse(result.body).created, 1);
+});
+test("pack type round-trips through live sheet changes and survives omitted Excel columns", async () => {
+  const [change] = planLiveSheetImport([["Item ID", "Pack type"], ["a", "Case of 24"]], [item]);
+  assert.equal(change.after.packType, "Case of 24");
+  const state = reset({ configured: false, items: [{ ...catalogItem, packType: "Case of 24" }] });
+  assert.equal((await importRows([{ name: "Soap", onHand: 1, targetQty: 300 }], true)).statusCode, 200);
+  assert.equal(state.savedItems[0].packType, "Case of 24");
 });

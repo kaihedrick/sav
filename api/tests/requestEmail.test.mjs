@@ -7,7 +7,7 @@ const { buildRequestEmail } = await import(`data:text/javascript;base64,${Buffer
 const input = {
   contributorName: "Sample Contributor", contributorEmail: "sample@example.com", requestId: "request-123",
   updated: false, eventDate: "2026-10-03", inboxUrl: "https://www.bagsofblessings.net/admin/requests",
-  items: [{ name: "Soap", quantity: 12, category: "Hygiene", imageUrl: "https://example.com/soap.jpg" }, { name: "Socks", quantity: 8 }],
+  items: [{ name: "Soap", quantity: 12, category: "Hygiene", packType: "6-pack", imageUrl: "https://example.com/soap.jpg" }, { name: "Socks", quantity: 8 }],
 };
 test("email includes quantities, photo, missing-image fallback and complete plain text", () => {
   const email = buildRequestEmail(input);
@@ -20,6 +20,8 @@ test("email includes quantities, photo, missing-image fallback and complete plai
   assert.match(email.text, /2026-10-03/);
   assert.match(email.html, /Pending arrival/);
   assert.match(email.text, /request-123/);
+  assert.match(email.text, /Pack: 6-pack/);
+  assert.match(email.html, /Pack: 6-pack/);
 });
 test("updated notifications make clear that this is the current full contribution", () => {
   const email = buildRequestEmail({ ...input, updated: true });

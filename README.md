@@ -82,6 +82,11 @@ If an older stack had **Cognito**, deploying this template **removes** those res
 
 ## Refresh inventory from the shared Google Sheet
 
+Excel file imports replace the whole catalog (clear, then insert). Rows are
+validated and matched before clearing. Matched items retain their IDs and saved
+image URLs when the file omits them; new items receive new IDs. Items omitted
+from the file are removed. This is separate from the live-sheet refresh below.
+
 Admins can use **Catalog → Refresh from live sheet** to read the configured
 Google Sheet into DynamoDB, then refresh the website inventory. This uses the
 existing spreadsheet ID, tab name, and service account secret; no new credentials
@@ -91,9 +96,19 @@ are required. The API reads evaluated values using
 - Keep **Item ID** unchanged. Refresh updates existing items only; create new items
   in Catalog. Missing sheet rows do not delete database records.
 - Editable columns: Item name, Type, Price, Stock, Notes, Target, Image, Hidden.
+- **Pack type** describes packaging, such as Single, 12-pack, or Case of 24.
+  Admins can edit it in Catalog or the sheet. It appears on item cards, the Commit
+  form, exports, and notification emails. Omitted Pack type columns preserve saved
+  values. This is a descriptive label; quantities are not automatically multiplied.
   Missing columns preserve existing values. Blank Stock/Target is an error (use 0).
   Blank Price/Notes/Image clears that field; blank Hidden means visible.
-- **Projected** and **Status** are calculated fields and are ignored on import.
+- **Target** is the remaining amount needed. New commitments reduce it (minimum 0)
+  and push the result to the sheet. Increasing a commitment subtracts only the
+  additional quantity. Reductions, deletions, and status changes do not restore it.
+  For manual rollback, edit Target in the sheet and use Refresh from live sheet.
+  Existing targets are not retroactively adjusted for old commitments.
+- **Projected** has been removed from displays and exports. Legacy Projected and
+  Status columns are ignored on import.
 - All rows are validated before saving. Updates use conditional transactions in
   batches of 50 items. Concurrent database changes stop the affected batch;
   a failure response reports how many items were already saved. Refresh is safe to retry.

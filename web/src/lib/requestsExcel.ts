@@ -22,6 +22,7 @@ export type InventoryExportLite = {
   category: string;
   onHand: number;
   targetQty: number;
+  packType?: string;
   projected: number;
   hidden?: boolean;
 };
@@ -138,7 +139,7 @@ export async function buildEventArchiveXlsxBuffer(input: {
     { header: "Category", key: "category", width: 18 },
     { header: "On hand", key: "onHand", width: 10 },
     { header: "Target", key: "targetQty", width: 10 },
-    { header: "Projected", key: "projected", width: 10 },
+    { header: "Pack type", key: "packType", width: 20 },
     { header: "Hidden", key: "hidden", width: 10 },
   ];
   for (const it of input.inventory) {
@@ -147,7 +148,7 @@ export async function buildEventArchiveXlsxBuffer(input: {
       category: it.category,
       onHand: it.onHand,
       targetQty: it.targetQty,
-      projected: it.projected,
+      packType: it.packType ?? "",
       hidden: it.hidden ? "yes" : "",
     });
   }

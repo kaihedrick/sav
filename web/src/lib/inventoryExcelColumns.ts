@@ -10,6 +10,7 @@ export type InventoryColumnField =
   | "itemId"
   | "name"
   | "category"
+  | "packType"
   | "price"
   | "onHand"
   | "targetQty"
@@ -28,6 +29,7 @@ export const INVENTORY_HEADER_ALIASES: Record<
   itemId: ["item id", "itemid", "id", "uuid"],
   name: ["item name", "itemname", "name", "item", "product"],
   category: ["type", "category", "cat", "group"],
+  packType: ["pack type", "packtype", "pack size", "packsize", "pack", "packaging"],
   price: ["price", "cost", "amount"],
   onHand: ["stock", "on hand", "onhand", "quantity", "qty"],
   targetQty: [

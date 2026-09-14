@@ -24,8 +24,8 @@ export function priorityScore(
   onHand: number,
   projected: number,
 ): number {
-  const need = Math.max(0, targetQty - onHand - projected);
-  return need * 1000 + projected;
+  // Target already represents remaining need; never subtract stock or commitments twice.
+  return Math.max(0, targetQty);
 }
 
 export function sortItemsByPriority<

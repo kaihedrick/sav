@@ -49,7 +49,7 @@ export async function notifyAdminRequest(params: {
     Promise.all(request.lines.map(async (line) => {
       const item = await getItem(line.itemId);
       return { name: item?.name ?? line.itemName ?? "Item no longer in catalog",
-        quantity: line.qty, category: item?.category, imageUrl: item?.imageUrl };
+        quantity: line.qty, category: item?.category, imageUrl: item?.imageUrl, packType: item?.packType };
     })),
   ]);
   const content = buildRequestEmail({

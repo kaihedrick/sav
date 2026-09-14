@@ -9,6 +9,7 @@ export type InventoryExportRow = {
   id: string;
   name: string;
   category: string;
+  packType?: string;
   price?: number;
   targetQty: number;
   onHand: number;
@@ -23,18 +24,7 @@ export function exportStatusLabel(row: {
   onHand: number;
   projected: number;
 }): string {
-  const target = row.targetQty;
-  const committed = row.onHand + row.projected;
-  if (target <= 0) {
-    if (row.onHand > 0) return "In stock";
-    return row.onHand === 0 && row.projected === 0 ? "Out of stock" : "In stock";
-  }
-  const gap = Math.max(0, target - committed);
-  if (gap === 0) return "FULL";
-  const shortRatio = gap / target;
-  if (shortRatio >= 0.85) return "Running low";
-  if (row.onHand === 0 && row.projected === 0) return "Out of stock";
-  return "In stock";
+  return inventoryWebStatusLabel(row.onHand);
 }
 
 const HEADERS = [
@@ -46,9 +36,9 @@ const HEADERS = [
   "Status",
   "Notes",
   "Target",
-  "Projected",
   "Image",
   "Hidden",
+  "Pack type",
 ] as const;
 
 /** Same column order as export, tab-separated (paste into Excel / Sheets). */
@@ -65,9 +55,9 @@ export function inventoryToTsv(rows: InventoryExportRow[]): string {
         inventoryWebStatusLabel(it.onHand).replace(/\t/g, " "),
         (it.notes ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " "),
         String(it.targetQty),
-        String(it.projected),
         (it.imageUrl ?? "").replace(/\t/g, " "),
         it.hidden ? "yes" : "",
+        (it.packType ?? "").replace(/[\t\r\n]/g, " "),
       ].join("\t"),
     ),
   ];

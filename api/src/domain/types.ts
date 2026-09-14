@@ -22,6 +22,7 @@ export interface ItemEntity {
   id: string;
   name: string;
   category: string;
+  packType?: string;
   targetQty: number;
   /** Optional reference / budget line (Excel “Price” column). */
   price?: number;

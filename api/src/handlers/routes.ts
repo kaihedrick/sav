@@ -30,6 +30,7 @@ import {
   readInventoryRows,
 } from "../integrations/googleSheets.js";
 import { planLiveSheetImport } from "../domain/liveSheetImport.js";
+import { resolveInventoryImport } from "../domain/inventoryImport.js";
 import {
   inventoryWebStatusLabel,
   itemDisplayNameForExport,
@@ -437,7 +438,7 @@ export async function handleRequest(
             onHand,
             projected,
             priorityScore:
-              Math.max(0, it.targetQty - onHand - projected) * 1000 + projected,
+              Math.max(0, it.targetQty),
           };
         }),
       );
@@ -452,6 +453,7 @@ export async function handleRequest(
       const schema = z.object({
         name: z.string().min(1),
         category: z.string().optional(),
+        packType: z.string().trim().max(100).optional(),
         targetQty: z.number().int().nonnegative(),
         price: z.number().finite().nonnegative().optional(),
         notes: z.string().optional(),
@@ -466,6 +468,7 @@ export async function handleRequest(
         id,
         name: p.name,
         category: p.category ?? "",
+        packType: p.packType || undefined,
         targetQty: p.targetQty,
         price: p.price,
         notes: p.notes,
@@ -488,6 +491,7 @@ export async function handleRequest(
         itemId: z.string().uuid().optional(),
         name: z.string().min(1).max(500),
         category: z.string().max(200).optional(),
+        packType: z.string().trim().max(100).optional(),
         price: z.number().finite().nonnegative().optional(),
         targetQty: z.number().int().nonnegative(),
         onHand: z.number().int().nonnegative(),
@@ -499,28 +503,27 @@ export async function handleRequest(
       const p = z
         .object({
           items: z.array(itemRow).min(1).max(500),
-          /** When true, removes all existing catalog items before importing (file becomes source of truth). */
+          /** Replace the catalog after validating rows and matching existing metadata. */
           replaceAll: z.boolean().optional(),
         })
         .parse(body);
+      const catalog = await repo.listItems();
+      const resolved = resolveInventoryImport(p.items, catalog);
+      // Validate supplied image URLs before writing any rows or deleting omitted items.
+      for (const { row } of resolved) if (row.imageUrl !== undefined) normalizeImageUrl(row.imageUrl);
       let deletedBefore = 0;
-      if (p.replaceAll) {
-        deletedBefore = await repo.deleteAllItems();
-      }
+      if (p.replaceAll) deletedBefore = await repo.deleteAllItems();
       let created = 0;
       let updated = 0;
       const now = new Date().toISOString();
       for (let i = 0; i < p.items.length; i++) {
-        const row = p.items[i];
-        const existing =
-          !p.replaceAll && row.itemId != null
-            ? await repo.getItem(row.itemId)
-            : null;
+        const { row, existing } = resolved[i];
         if (existing) {
           const entity: ItemEntity = {
             ...existing,
             name: row.name.trim(),
-            category: row.category?.trim() ?? "",
+            category: row.category?.trim() || existing.category,
+            packType: row.packType !== undefined ? row.packType || undefined : existing.packType,
             targetQty: row.targetQty,
             price:
               row.price !== undefined ? row.price : existing.price,
@@ -546,6 +549,7 @@ export async function handleRequest(
             id,
             name: row.name.trim(),
             category: row.category?.trim() ?? "",
+            packType: row.packType || undefined,
             targetQty: row.targetQty,
             price: row.price,
             notes: row.notes?.trim(),
@@ -582,6 +586,7 @@ export async function handleRequest(
       const schema = z.object({
         name: z.string().optional(),
         category: z.string().optional(),
+        packType: z.string().trim().max(100).optional(),
         targetQty: z.number().int().nonnegative().optional(),
         price: z.number().finite().nonnegative().optional(),
         notes: z.string().optional(),
@@ -669,7 +674,7 @@ export async function handleRequest(
         );
       }
       const body = JSON.parse(event.body || "{}");
-      const p = z.object({ lines: z.array(lineSchema).min(1) }).parse(body);
+      const p = z.object({ lines: z.array(lineSchema).min(1).max(99), requestId: z.string().uuid().optional() }).parse(body);
       const userName =
         `${prof.firstName.trim()} ${prof.lastName.trim()}`;
       const namedLines = withItemNames(p.lines, await itemNameMap());
@@ -679,10 +684,11 @@ export async function handleRequest(
         userEmail: user.email,
         lines: namedLines,
       });
-      await repo.putRequest(r);
-      await notifyAdminRequest({
+      if (p.requestId) r.id = p.requestId;
+      const created = await repo.commitRequest(r);
+      if (created) await notifyAdminRequest({
         request: r,
-      });
+      }).catch(error => console.error("[resend] notification failed after commit", error));
       const sheetSync = await runGoogleSheetSync();
       return json(201, { ...r, ...sheetSync }, origin);
     }
@@ -709,12 +715,12 @@ export async function handleRequest(
           };
         }
       }
-      await repo.putRequest(toSave);
+      await repo.commitRequest(toSave, existing);
       if (!admin) {
         await notifyAdminRequest({
           request: toSave,
           updated: true,
-        });
+        }).catch(error => console.error("[resend] notification failed after commit", error));
       }
       const sheetSyncReq = await runGoogleSheetSync();
       return json(200, { ...toSave, ...sheetSyncReq }, origin);
@@ -789,7 +795,7 @@ export async function handleRequest(
       const items = await repo.listItems();
       const requests = await repo.listAllRequests();
       const lines = [
-        "itemId,name,category,price,targetQty,onHand,projected,imageUrl,hidden",
+        "itemId,name,category,price,targetQty,onHand,imageUrl,hidden,packType",
         ...(await Promise.all(
           items.map(async (it) => {
             const onHand = await repo.getStock(it.id);
@@ -803,9 +809,9 @@ export async function handleRequest(
               price,
               it.targetQty,
               onHand,
-              projected,
               csvEscape(it.imageUrl ?? ""),
               it.hidden ? "true" : "",
+              csvEscape(it.packType ?? ""),
             ].join(",");
           }),
         )),
@@ -868,9 +874,9 @@ const INVENTORY_SHEET_HEADER_ROW: string[] = [
   "Status",
   "Notes",
   "Target",
-  "Projected",
   "Image",
   "Hidden",
+  "Pack type",
 ];
 
 /** Header row + data rows for ValueRange.values (majorDimension ROWS). */
@@ -896,9 +902,9 @@ async function buildInventorySheetRows(): Promise<(string | number)[][]> {
       inventoryWebStatusLabel(it.onHand),
       it.notes ?? "",
       it.targetQty,
-      it.projected,
       it.imageUrl ?? "",
       it.hidden ? "yes" : "",
+      it.packType ?? "",
     ];
   });
   return [INVENTORY_SHEET_HEADER_ROW, ...dataRows];

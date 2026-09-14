@@ -16,6 +16,7 @@ import type {
 } from "../domain/types.js";
 import { ORG } from "../domain/requestService.js";
 import type { SheetChange } from "../domain/liveSheetImport.js";
+import { additionalCommitments } from "../domain/commitTargets.js";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -31,6 +32,7 @@ export async function listItems(): Promise<ItemEntity[]> {
   const out = await client.send(
     new QueryCommand({
       TableName: tableName(),
+      ConsistentRead: true,
       KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
       ExpressionAttributeValues: {
         ":pk": PK,
@@ -46,6 +48,7 @@ export async function getItem(id: string): Promise<ItemEntity | null> {
     new GetCommand({
       TableName: tableName(),
       Key: { pk: PK, sk: `ITEM#${id}` },
+      ConsistentRead: true,
     }),
   );
   if (!out.Item) return null;
@@ -163,6 +166,7 @@ export async function getRequest(id: string): Promise<ContributionRequest | null
     new GetCommand({
       TableName: tableName(),
       Key: { pk: PK, sk: `REQUEST#${id}` },
+      ConsistentRead: true,
     }),
   );
   if (!out.Item) return null;
@@ -182,6 +186,46 @@ export async function putRequest(r: ContributionRequest): Promise<void> {
       },
     }),
   );
+}
+
+/** Save a contribution and reduce remaining targets together, without lost concurrent commits. */
+export async function commitRequest(r: ContributionRequest, previous?: ContributionRequest): Promise<boolean> {
+  const deltas = additionalCommitments(r.lines, previous?.lines);
+  if (deltas.size > 99) throw new Error("Commit at most 99 different items at once.");
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (!previous) {
+      const saved = await getRequest(r.id);
+      if (saved) {
+        const sameLines = JSON.stringify(saved.lines.map(({ itemId, qty }) => ({ itemId, qty }))) === JSON.stringify(r.lines.map(({ itemId, qty }) => ({ itemId, qty })));
+        if (saved.userId === r.userId && sameLines) return false;
+        throw new Error("This commitment was already used. Refresh before submitting again.");
+      }
+    }
+    const targets = await Promise.all([...deltas].map(async ([id, qty]) => {
+      const item = await getItem(id);
+      if (!item) throw new Error("An item is no longer available. Refresh the page before committing.");
+      return { id, before: item.targetQty, after: Math.max(0, item.targetQty - qty) };
+    }));
+    try {
+      await client.send(new TransactWriteCommand({
+        TransactItems: [{ Put: {
+          TableName: tableName(),
+          Item: { pk: PK, sk: `REQUEST#${r.id}`, gsi1pk: "REQUEST", gsi1sk: `${r.createdAt}#${r.id}`, ...requestAttrs(r) },
+          ConditionExpression: previous ? "updatedAt = :expected" : "attribute_not_exists(pk)",
+          ...(previous ? { ExpressionAttributeValues: { ":expected": previous.updatedAt } } : {}),
+        } }, ...targets.map(target => ({ Update: {
+          TableName: tableName(), Key: { pk: PK, sk: `ITEM#${target.id}` },
+          UpdateExpression: "SET targetQty = :next, updatedAt = :now",
+          ConditionExpression: "targetQty = :expected",
+          ExpressionAttributeValues: { ":expected": target.before, ":next": target.after, ":now": r.updatedAt },
+        } }))],
+      }));
+      return true;
+    } catch (error) {
+      if (!(error instanceof Error) || error.name !== "TransactionCanceledException" || attempt === 2) throw error;
+    }
+  }
+  throw new Error("Inventory changed during commit. Please retry.");
 }
 
 export async function deleteRequest(id: string): Promise<void> {
@@ -436,6 +480,7 @@ function entityAttrs(e: ItemEntity) {
     id: e.id,
     name: e.name,
     category: e.category,
+    packType: e.packType ?? "",
     targetQty: e.targetQty,
     notes: e.notes ?? "",
     sortPriority: e.sortPriority,
@@ -461,6 +506,7 @@ function itemFromAttrs(raw: Record<string, unknown>): ItemEntity {
     id: String(raw.id),
     name: String(raw.name),
     category: String(raw.category ?? ""),
+    packType: raw.packType ? String(raw.packType) : undefined,
     targetQty: Number(raw.targetQty ?? 0),
     price,
     notes: raw.notes ? String(raw.notes) : undefined,

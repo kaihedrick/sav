@@ -7,6 +7,7 @@ export type SheetChange = { before: SheetItem; after: SheetItem };
 const aliases: Record<string, string[]> = {
   id: ["itemid", "id", "uuid"], name: ["itemname", "name", "item", "product"],
   category: ["type", "category"], price: ["price", "cost"],
+  packType: ["packtype", "packsize", "pack", "packaging"],
   onHand: ["stock", "onhand", "quantity", "qty"], targetQty: ["target", "targetqty", "goal", "targetquantity"],
   notes: ["notes", "note"], imageUrl: ["image", "imageurl", "photo", "photourl"],
   hidden: ["hidden", "hide"],
@@ -54,7 +55,7 @@ export function planLiveSheetImport(values: unknown[][], items: SheetItem[]): Sh
           (field !== "price" && !Number.isSafeInteger(number))) fail(`invalid ${field} value.`);
       after[field] = number;
     }
-    for (const [field, max] of [["name", 500], ["category", 200], ["notes", 2000], ["imageUrl", 2000]] as const) {
+    for (const [field, max] of [["name", 500], ["category", 200], ["packType", 100], ["notes", 2000], ["imageUrl", 2000]] as const) {
       if (!columns.has(field)) continue;
       let value = str(field);
       // Exports decorate names; importing an unchanged export must not rename items.
@@ -65,7 +66,7 @@ export function planLiveSheetImport(values: unknown[][], items: SheetItem[]): Sh
         try { if (!["http:", "https:"].includes(new URL(value).protocol)) fail("Image must be an HTTP(S) URL."); }
         catch { fail("Image must be an HTTP(S) URL."); }
       }
-      if (field === "notes" || field === "imageUrl") after[field] = value || undefined;
+      if (field === "notes" || field === "imageUrl" || field === "packType") after[field] = value || undefined;
       else after[field] = value;
     }
     if (columns.has("hidden")) {

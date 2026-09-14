@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "../components/Layout";
 import { apiJson, apiFetch } from "../lib/api";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getIdToken } from "../lib/tokens";
 import { isAdminFromToken } from "../lib/sessionJwt";
@@ -14,6 +14,7 @@ import {
 import { IconButton } from "../components/IconButton";
 import { InventoryBrowser } from "../components/InventoryBrowser";
 import { ItemThumb } from "../components/ItemThumb";
+import { PackLabel } from "../components/PackLabel";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "";
 
@@ -21,6 +22,7 @@ type InvItem = {
   id: string;
   name: string;
   category: string;
+  packType?: string;
   targetQty: number;
   onHand: number;
   projected: number;
@@ -41,6 +43,8 @@ type AdminRequestRow = RequestRow & { userId: string };
 
 export function HomePage() {
   const qc = useQueryClient();
+  const commitAttempt = useRef<{ payload: string; id: string } | null>(null);
+  const [commitWarning, setCommitWarning] = useState<string | null>(null);
   const admin = useMemo(() => {
     const t = getIdToken();
     if (!t) return false;
@@ -119,15 +123,21 @@ export function HomePage() {
   }, [quickOrderItem]);
 
   const quickCommit = useMutation({
-    mutationFn: (payload: { itemId: string; qty: number }) =>
-      apiJson("/requests", {
+    mutationFn: (payload: { itemId: string; qty: number }) => {
+      const fingerprint = JSON.stringify(payload);
+      if (commitAttempt.current?.payload !== fingerprint) commitAttempt.current = { payload: fingerprint, id: crypto.randomUUID() };
+      return apiJson<{ googleSheetSync?: string }>("/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          requestId: commitAttempt.current.id,
           lines: [{ itemId: payload.itemId, qty: payload.qty }],
         }),
-      }),
-    onSuccess: () => {
+      });
+    },
+    onSuccess: (data) => {
+      commitAttempt.current = null;
+      setCommitWarning(data.googleSheetSync === "error" ? "Your commitment is saved and Target is updated on the website, but the shared sheet could not update. Please let an admin know." : null);
       qc.invalidateQueries({ queryKey: ["inventory"] });
       qc.invalidateQueries({ queryKey: ["my-requests"] });
       qc.invalidateQueries({ queryKey: ["community-requests"] });
@@ -172,6 +182,8 @@ export function HomePage() {
         What we need
       </h1>
       <section className="mt-6">
+        <p className="mb-3 text-sm text-bob-muted">Target shows how many more are needed. Committing items reduces that number.</p>
+        {commitWarning ? <p role="status" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{commitWarning}</p> : null}
         {inv.isLoading && (
           <p className="text-bob-muted" aria-live="polite">
             <i className="fa-solid fa-spinner fa-spin" aria-hidden />{" "}
@@ -227,18 +239,19 @@ export function HomePage() {
                     {(it.category || "").trim() ? (
                       <p className="mt-0.5 text-xs text-bob-muted">{it.category}</p>
                     ) : null}
+                    <PackLabel value={it.packType} />
                     <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <dt className="text-bob-muted">On hand</dt>
                         <dd
                           className={`font-medium ${level === "out" ? "text-red-700" : level === "low" ? "text-amber-700" : "text-emerald-800"}`}
                         >
-                          {it.onHand} <span className="text-bob-muted">out of {it.targetQty}</span>
+                          {it.onHand}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-bob-muted">Projected</dt>
-                        <dd className="font-medium text-bob-magenta">{it.projected}</dd>
+                        <dt className="text-bob-muted">Target</dt>
+                        <dd className="font-medium text-bob-magenta">{it.targetQty}</dd>
                       </div>
                     </dl>
                   </div>
@@ -291,6 +304,7 @@ export function HomePage() {
                     {quickOrderItem.category}
                   </p>
                 ) : null}
+                <PackLabel value={quickOrderItem.packType} />
                 <div className="mt-5 flex items-center gap-3">
                   <input
                     type="number"

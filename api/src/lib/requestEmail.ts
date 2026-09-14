@@ -5,7 +5,7 @@ export interface RequestEmailInput {
   updated: boolean;
   eventDate?: string;
   inboxUrl: string;
-  items: { name: string; quantity: number; category?: string; imageUrl?: string }[];
+  items: { name: string; quantity: number; category?: string; imageUrl?: string; packType?: string }[];
 }
 
 function escape(value: string): string {
@@ -37,6 +37,7 @@ export function buildRequestEmail(input: RequestEmailInput): { subject: string; 
       <td valign="middle" style="padding:16px 8px 16px 0;border-bottom:1px solid #eadfd9;word-break:break-word;">
         <div style="font-size:16px;font-weight:bold;color:#3b2923;">${escape(item.name)}</div>
         ${item.category ? `<div style="padding-top:5px;font-size:12px;color:#78655b;">${escape(item.category)}</div>` : ""}
+        ${item.packType ? `<div style="padding-top:5px;font-size:12px;color:#78414e;">Pack: ${escape(item.packType)}</div>` : ""}
       </td>
       <td width="65" align="right" valign="middle" style="padding:16px 0;border-bottom:1px solid #eadfd9;">
         <div style="font-size:10px;letter-spacing:1px;color:#78655b;">QTY</div>
@@ -79,7 +80,7 @@ export function buildRequestEmail(input: RequestEmailInput): { subject: string; 
   </body></html>`;
   const text = ["Bags of Blessings", input.updated ? "Contribution updated" : "New contribution", "", summary,
     "Status: Pending arrival", ...(input.eventDate ? [`Event date: ${input.eventDate}`] : []), "", "What they’re bringing:",
-    ...input.items.map(item => `- ${item.quantity} × ${item.name}${item.category ? ` (${item.category})` : ""}`), "",
+    ...input.items.map(item => `- ${item.quantity} × ${item.name}${item.category ? ` (${item.category})` : ""}${item.packType ? ` — Pack: ${item.packType}` : ""}`), "",
     `Contributor: ${input.contributorName}`, ...(input.contributorEmail ? [input.contributorEmail] : []),
     `Request reference: ${input.requestId}`, "", `Open request inbox: ${input.inboxUrl}`,
     "Manage request notifications in Admin access."].join("\n");

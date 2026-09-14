@@ -23,6 +23,7 @@ type ExportFieldKey =
   | "itemId"
   | "name"
   | "category"
+  | "packType"
   | "price"
   | "onHand"
   | "status"
@@ -121,12 +122,14 @@ function writeRowValues(
   set("itemId", row.id);
   set("name", itemDisplayNameForExport(row.name, row.category));
   set("category", row.category || "—");
+  set("packType", row.packType ?? "");
   set("price", row.price != null && Number.isFinite(row.price) ? row.price : "");
   set("onHand", row.onHand);
   set("status", inventoryWebStatusLabel(row.onHand));
   set("notes", row.notes ?? "");
   set("targetQty", row.targetQty);
-  set("projected", row.projected);
+  // Older saved templates may still contain this column; keep it empty and hidden.
+  set("projected", "");
   set("imageUrl", row.imageUrl ?? "");
   set("hidden", row.hidden ? "yes" : "");
 }
@@ -219,6 +222,13 @@ async function fillTemplateWorkbook(
     const headerRow = sheet.getRow(HEADER_ROW);
     const colMap = mapHeaderToColumns(headerRow);
     if (colMap.name == null) return null;
+    if (colMap.packType == null) {
+      const column = sheet.columnCount + 1;
+      headerRow.getCell(column).value = "Pack type";
+      sheet.getColumn(column).width = 20;
+      colMap.packType = column;
+    }
+    if (colMap.projected != null) sheet.getColumn(colMap.projected).hidden = true;
 
     const nameCol = colMap.name;
     const protoR = pickPrototypeDataRow(sheet, nameCol);
@@ -273,9 +283,9 @@ const FALLBACK_HEADERS: { key: ExportFieldKey; label: string; width: number }[] 
     { key: "status", label: "Status", width: 14 },
     { key: "notes", label: "Notes", width: 40 },
     { key: "targetQty", label: "Target", width: 10 },
-    { key: "projected", label: "Projected", width: 12 },
     { key: "imageUrl", label: "Image", width: 40 },
     { key: "hidden", label: "Hidden", width: 10 },
+    { key: "packType", label: "Pack type", width: 20 },
   ];
 
 async function buildFallbackStyledWorkbook(
@@ -329,6 +339,7 @@ async function buildFallbackStyledWorkbook(
       notes: r.notes ?? "",
       targetQty: r.targetQty,
       projected: r.projected,
+      packType: r.packType ?? "",
       imageUrl: r.imageUrl ?? "",
       hidden: r.hidden ? "yes" : "",
     });

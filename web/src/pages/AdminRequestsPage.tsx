@@ -21,6 +21,7 @@ type InvItem = {
   category: string;
   onHand: number;
   targetQty: number;
+  packType?: string;
   projected: number;
   hidden?: boolean;
 };
@@ -158,6 +159,7 @@ export function AdminRequestsPage() {
         category: it.category,
         onHand: it.onHand,
         targetQty: it.targetQty,
+        packType: it.packType,
         projected: it.projected,
         hidden: it.hidden,
       })),
