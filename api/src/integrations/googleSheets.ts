@@ -101,7 +101,8 @@ function sheetsConfigured(): {
 export function getPublicSheetViewUrl(): string | null {
   const id = process.env.GOOGLE_SHEETS_SPREADSHEET_ID?.trim();
   if (!id) return null;
-  return `https://docs.google.com/spreadsheets/d/${id}/htmlview`;
+  // Open the actual document; Google enforces each user's sharing permissions.
+  return `https://docs.google.com/spreadsheets/d/${id}/edit`;
 }
 
 export function isGoogleSheetsSyncEnabled(): boolean {
