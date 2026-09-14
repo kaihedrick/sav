@@ -81,6 +81,9 @@ export function AdminDashboard() {
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importErr, setImportErr] = useState<string | null>(null);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
+  const [manualCopyText, setManualCopyText] = useState<string | null>(null);
+  const [copying, setCopying] = useState(false);
+  const manualCopyRef = useRef<HTMLTextAreaElement>(null);
   const [editItem, setEditItem] = useState<InvItem | null>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
 
@@ -301,13 +304,19 @@ export function AdminDashboard() {
 
   async function copyInventoryTsv() {
     setCopyMsg(null);
+    setManualCopyText(null);
+    setCopying(true);
+    const text = inventoryToTsv(exportRows);
     try {
-      await navigator.clipboard.writeText(inventoryToTsv(exportRows));
-      setCopyMsg("Copied");
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      setCopyMsg("Table copied. Paste it into Excel or Google Sheets.");
     } catch {
-      setCopyMsg("Copy failed");
+      setManualCopyText(text);
+      setCopyMsg("Automatic copy is unavailable in this browser. Select the table below and use your device’s Copy command.");
+    } finally {
+      setCopying(false);
     }
-    setTimeout(() => setCopyMsg(null), 4000);
   }
 
   return (
@@ -482,10 +491,12 @@ export function AdminDashboard() {
               type="button"
               className={inventoryActionClass}
               title="Copy the inventory table to your clipboard"
+              disabled={copying || inv.isPending || inv.isError || items.length === 0}
+              aria-busy={copying}
               onClick={() => void copyInventoryTsv()}
             >
-              <InventoryActionIcon action="copy" />
-              Copy table
+              <InventoryActionIcon action="copy" busy={copying} />
+              {copying ? "Copying…" : "Copy table"}
             </button>
           </div>
         </div>
@@ -496,9 +507,34 @@ export function AdminDashboard() {
             Refresh before making other website changes, which can overwrite sheet edits.
           </p>
         ) : null}
-        {copyMsg && (
-          <p className="mb-2 text-sm text-bob-muted">{copyMsg}</p>
-        )}
+        <p role="status" aria-live="polite" className={copyMsg ? "mb-2 text-sm text-bob-muted" : "sr-only"}>{copyMsg}</p>
+        {manualCopyText !== null ? (
+          <div className="mb-4 rounded-xl border border-bob-mist bg-bob-cream p-3">
+            <label htmlFor="inventory-copy-text" className="text-sm font-semibold">Table to copy</label>
+            <textarea
+              id="inventory-copy-text"
+              ref={manualCopyRef}
+              readOnly
+              value={manualCopyText}
+              rows={4}
+              wrap="off"
+              className="mt-2 block w-full min-w-0 rounded-lg border border-bob-mist bg-white p-2 text-base"
+              onFocus={(event) => event.currentTarget.select()}
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" className="surface-glass-btn min-h-11 px-3 text-sm" onClick={() => {
+                const field = manualCopyRef.current;
+                field?.focus();
+                field?.select();
+                field?.setSelectionRange(0, field.value.length);
+              }}>Select all</button>
+              <button type="button" className="surface-glass-btn min-h-11 px-3 text-sm" onClick={() => {
+                setManualCopyText(null);
+                setCopyMsg(null);
+              }}>Close</button>
+            </div>
+          </div>
+        ) : null}
         {importMsg && (
           <p className="mb-2 text-sm text-bob-muted">{importMsg}</p>
         )}
