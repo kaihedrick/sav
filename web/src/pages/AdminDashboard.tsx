@@ -510,14 +510,6 @@ export function AdminDashboard() {
             </button>
           </div>
         </div>
-        {liveSheet.data?.syncEnabled ? (
-          <p className="mb-2 text-sm text-bob-muted">
-            After editing the sheet, refresh here to save changes to existing items.
-            Keep Item IDs unchanged. Target is the amount still needed and decreases with each commitment.
-            For a rollback, edit Target in the sheet and refresh here.
-            Refresh before making other website changes, which can overwrite sheet edits.
-          </p>
-        ) : null}
         <p role="status" aria-live="polite" className={copyMsg ? "mb-2 text-sm text-bob-muted" : "sr-only"}>{copyMsg}</p>
         {manualCopyText !== null ? (
           <div className="mb-4 rounded-xl border border-bob-mist bg-bob-cream p-3">

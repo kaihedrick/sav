@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiJson } from "../lib/api";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export function HistoryActions({ request }: { request: { id: string; lines: { itemId: string; qty: number; itemName?: string }[] } }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [quantities, setQuantities] = useState<string[]>([]);
   const save = useMutation({
     mutationFn: (remove: boolean) => apiJson(`/requests/${request.id}`, remove ? { method: "DELETE" } : {
@@ -13,6 +15,7 @@ export function HistoryActions({ request }: { request: { id: string; lines: { it
     }),
     onSuccess: () => {
       setEditing(false);
+      setConfirmDelete(false);
       for (const key of ["my-requests", "admin-requests", "community-requests", "inventory"]) void qc.invalidateQueries({ queryKey: [key] });
     },
   });
@@ -32,8 +35,17 @@ export function HistoryActions({ request }: { request: { id: string; lines: { it
       </div>
     </form> : <div className="flex flex-wrap gap-2">
       <button type="button" disabled={save.isPending} className="surface-glass-btn min-h-11 px-3 text-sm" onClick={() => { setQuantities(request.lines.map(line => String(line.qty))); save.reset(); setEditing(true); }}><i className="fa-solid fa-pen mr-2" aria-hidden />Edit</button>
-      <button type="button" disabled={save.isPending} className="min-h-11 rounded-full border border-rose-200 bg-rose-50 px-3 text-sm text-rose-800" onClick={() => { if (confirm("Delete this history entry? Target will not be restored automatically.")) save.mutate(true); }}><i className="fa-solid fa-trash mr-2" aria-hidden />Delete</button>
+      <button type="button" disabled={save.isPending} className="min-h-11 rounded-full border border-rose-200 bg-rose-50 px-3 text-sm text-rose-800" onClick={() => { save.reset(); setConfirmDelete(true); }}><i className="fa-solid fa-trash mr-2" aria-hidden />Delete</button>
     </div>}
-    {save.error ? <p role="alert" className="mt-2 text-sm text-red-700">{save.error.message}</p> : null}
+    {save.error && !confirmDelete ? <p role="alert" className="mt-2 text-sm text-red-700">{save.error.message}</p> : null}
+    <ConfirmDialog open={confirmDelete} title="Delete this entry?"
+      description="This removes the contribution from history. An admin will need to correct Target manually."
+      busy={save.isPending} error={save.error?.message}
+      onCancel={() => { setConfirmDelete(false); save.reset(); }}
+      onConfirm={() => { if (!save.isPending) save.mutate(true); }}>
+      <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto rounded-xl bg-white/70 p-3 text-sm">
+        {request.lines.map((line, index) => <li key={`${line.itemId}-${index}`} className="break-words">{line.itemName ?? `Item ${index + 1}`} × {line.qty}</li>)}
+      </ul>
+    </ConfirmDialog>
   </div>;
 }
