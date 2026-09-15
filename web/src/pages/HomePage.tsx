@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "../components/Layout";
-import { apiJson, apiFetch } from "../lib/api";
+import { apiJson } from "../lib/api";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getIdToken } from "../lib/tokens";
@@ -11,6 +11,7 @@ import {
   stockLevelFromOnHand,
   stockStatusClasses,
 } from "../lib/inventoryCardStyle";
+import { HistoryActions } from "../components/HistoryActions";
 import { IconButton } from "../components/IconButton";
 import { InventoryBrowser } from "../components/InventoryBrowser";
 import { ItemThumb } from "../components/ItemThumb";
@@ -73,32 +74,8 @@ export function HomePage() {
     enabled: admin,
   });
 
-  const patchStatus = useMutation({
-    mutationFn: async ({
-      id,
-      status,
-    }: {
-      id: string;
-      status: "pending" | "received" | "not_brought";
-    }) => {
-      const res = await apiFetch(`/admin/requests/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-requests"] });
-      qc.invalidateQueries({ queryKey: ["community-requests"] });
-      qc.invalidateQueries({ queryKey: ["inventory"] });
-      qc.invalidateQueries({ queryKey: ["my-requests"] });
-    },
-  });
-
   const [quickOrderItem, setQuickOrderItem] = useState<InvItem | null>(null);
   const [quickQty, setQuickQty] = useState(1);
-  const [mineTab, setMineTab] = useState<"pending" | "history">("pending");
 
   useEffect(() => {
     if (quickOrderItem) setQuickQty(1);
@@ -167,14 +144,9 @@ export function HomePage() {
     admin
       ? (allForAdmin.data?.requests ?? [])
       : (community.data?.requests ?? [])
-  ).filter((r) => r.status !== "rejected");
+  );
 
   const mineRequests = mine.data?.requests ?? [];
-  const pendingMine = mineRequests.filter((r) => r.status === "pending");
-  const historyMine = mineRequests.filter(
-    (r) => r.status === "received" || r.status === "not_brought",
-  );
-  const receivedCount = mineRequests.filter((r) => r.status === "received").length;
 
   return (
     <Layout isAdmin={admin}>
@@ -370,85 +342,19 @@ export function HomePage() {
       <section className="mt-10">
         <h2 className="section-title flex items-center gap-2 text-lg tracking-tight">
           <i className="fa-solid fa-user" aria-hidden />
-          My requests
+          My history
         </h2>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-3 py-2.5">
-            <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800">
-              <i className="fa-solid fa-clock" aria-hidden />
-              Pending
-            </p>
-            <p className="mt-1 text-xl font-semibold text-bob-ink">
-              {pendingMine.length}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-2.5">
-            <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-800">
-              <i className="fa-solid fa-check" aria-hidden />
-              Received
-            </p>
-            <p className="mt-1 text-xl font-semibold text-bob-ink">
-              {receivedCount}
-            </p>
-          </div>
-        </div>
-        <div
-          className="mt-4 flex gap-1 rounded-full border border-bob-mist/80 bg-white/70 p-1"
-          role="tablist"
-          aria-label="My requests"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mineTab === "pending"}
-            className={`flex-1 rounded-full px-3 py-1.5 text-sm font-medium ${
-              mineTab === "pending"
-                ? "bg-bob-wood text-white shadow-sm"
-                : "text-bob-muted hover:bg-bob-mist/60 hover:text-bob-ink"
-            }`}
-            onClick={() => setMineTab("pending")}
-          >
-            Pending
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mineTab === "history"}
-            className={`flex-1 rounded-full px-3 py-1.5 text-sm font-medium ${
-              mineTab === "history"
-                ? "bg-bob-wood text-white shadow-sm"
-                : "text-bob-muted hover:bg-bob-mist/60 hover:text-bob-ink"
-            }`}
-            onClick={() => setMineTab("history")}
-          >
-            History
-          </button>
-        </div>
+        <p className="mt-2 text-sm text-bob-muted">Your contributions appear here as soon as you commit. You can edit them later.</p>
         <ul className="mt-3 space-y-3">
-          {(mineTab === "pending" ? pendingMine : historyMine).length === 0 && (
+          {mineRequests.length === 0 && (
             <li className="surface-glass flex items-center gap-2 px-4 py-3 text-sm text-bob-muted">
               <i className="fa-solid fa-inbox" aria-hidden />
               Empty
             </li>
           )}
-          {(mineTab === "pending" ? pendingMine : historyMine).map((r) => (
+          {mineRequests.map((r) => (
             <li key={r.id} className="surface-glass p-4">
               <div className="flex flex-wrap justify-between gap-2 text-sm">
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                    r.status === "received"
-                      ? "bg-emerald-50 text-emerald-800"
-                      : r.status === "not_brought"
-                        ? "bg-amber-50 text-amber-800"
-                        : "bg-bob-mist/80 text-bob-ink"
-                  }`}
-                >
-                  {r.status === "received"
-                    ? "Received"
-                    : r.status === "not_brought"
-                      ? "Not brought"
-                      : "Pending"}
-                </span>
                 <span className="text-bob-muted">
                   {new Date(r.createdAt).toLocaleString()}
                 </span>
@@ -458,50 +364,7 @@ export function HomePage() {
                   <li key={i}>{formatLine(l)}</li>
                 ))}
               </ul>
-              {r.status === "pending" && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <IconButton
-                    icon="fa-pen"
-                    label="Edit quantity"
-                    className="surface-glass-btn h-9 w-9 border px-0 text-bob-ink"
-                    onClick={async () => {
-                      const qty = Number(
-                        prompt(
-                          "Qty for first line?",
-                          String(r.lines[0]?.qty ?? 1),
-                        ),
-                      );
-                      if (!Number.isFinite(qty)) return;
-                      await apiFetch(`/requests/${r.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          lines: r.lines.map((l, j) =>
-                            j === 0 ? { ...l, qty } : l,
-                          ),
-                        }),
-                      });
-                      qc.invalidateQueries({ queryKey: ["my-requests"] });
-                      qc.invalidateQueries({ queryKey: ["inventory"] });
-                      qc.invalidateQueries({ queryKey: ["community-requests"] });
-                      qc.invalidateQueries({ queryKey: ["admin-requests"] });
-                    }}
-                  />
-                  <IconButton
-                    icon="fa-trash"
-                    label="Delete request"
-                    className="h-9 w-9 rounded-full border border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"
-                    onClick={async () => {
-                      if (!confirm("Delete this request?")) return;
-                      await apiFetch(`/requests/${r.id}`, { method: "DELETE" });
-                      qc.invalidateQueries({ queryKey: ["my-requests"] });
-                      qc.invalidateQueries({ queryKey: ["inventory"] });
-                      qc.invalidateQueries({ queryKey: ["community-requests"] });
-                      qc.invalidateQueries({ queryKey: ["admin-requests"] });
-                    }}
-                  />
-                </div>
-              )}
+              <HistoryActions request={r} />
             </li>
           ))}
         </ul>
@@ -513,7 +376,7 @@ export function HomePage() {
             className={`fa-solid ${admin ? "fa-clipboard-list" : "fa-users"}`}
             aria-hidden
           />
-          {admin ? "All requests" : "Community"}
+          {admin ? "All history" : "Community history"}
         </h2>
         {!admin && community.isLoading && (
           <p className="mt-3 text-bob-muted" aria-live="polite">
@@ -541,7 +404,6 @@ export function HomePage() {
             >
               <div className="flex flex-wrap justify-between gap-2 text-sm">
                 <span className="font-semibold text-bob-ink">{r.userName}</span>
-                <span className="font-medium text-bob-magenta">{r.status}</span>
               </div>
               <p className="mt-0.5 text-xs text-bob-muted">
                 {new Date(r.createdAt).toLocaleString()}
@@ -551,26 +413,7 @@ export function HomePage() {
                   <li key={i}>{formatLine(l)}</li>
                 ))}
               </ul>
-              {admin && r.status === "pending" && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <IconButton
-                    icon="fa-check"
-                    label="Mark received"
-                    className="h-9 w-9 rounded-full bg-bob-gold text-white shadow-sm hover:bg-bob-gold-dark"
-                    onClick={() =>
-                      patchStatus.mutate({ id: r.id, status: "received" })
-                    }
-                  />
-                  <IconButton
-                    icon="fa-ban"
-                    label="Not brought"
-                    className="surface-glass-btn h-9 w-9 border px-0 text-bob-ink"
-                    onClick={() =>
-                      patchStatus.mutate({ id: r.id, status: "not_brought" })
-                    }
-                  />
-                </div>
-              )}
+              {admin ? <HistoryActions request={r} /> : null}
             </li>
           ))}
         </ul>

@@ -337,7 +337,7 @@ export function AdminDashboard() {
           className="inline-flex items-center justify-center gap-2 rounded-full bg-bob-gold px-4 py-2 text-center text-sm font-semibold text-white shadow-md shadow-bob-wood/15 transition-colors hover:bg-bob-gold-dark"
         >
           <i className="fa-solid fa-inbox" aria-hidden />
-          Inbox
+          History
         </Link>
       </div>
 

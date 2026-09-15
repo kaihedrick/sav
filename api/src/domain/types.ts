@@ -1,4 +1,5 @@
-export type RequestStatus = "pending" | "received" | "not_brought";
+/** Legacy values remain readable; new contributions are simple history records. */
+export type RequestStatus = "recorded" | "pending" | "received" | "not_brought";
 
 export interface RequestLine {
   itemId: string;

@@ -82,6 +82,11 @@ If an older stack had **Cognito**, deploying this template **removes** those res
 
 ## Refresh inventory from the shared Google Sheet
 
+Contributions appear immediately in History, with no Pending/Received workflow.
+Contributors can edit or delete their own entries later; admins can manage any
+entry. Legacy status fields are retained for compatibility but never gate edits.
+History exports and email notifications omit arrival status.
+
 Excel file imports replace the whole catalog (clear, then insert). Rows are
 validated and matched before clearing. Matched items retain their IDs and saved
 image URLs when the file omits them; new items receive new IDs. Items omitted

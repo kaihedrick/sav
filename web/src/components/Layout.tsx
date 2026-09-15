@@ -174,8 +174,8 @@ export function Layout({
                   />
                   <TabLink
                     to="/admin/requests"
-                    icon="fa-inbox"
-                    label="Inbox"
+                    icon="fa-clock-rotate-left"
+                    label="History"
                     active={path.startsWith("/admin/requests")}
                   />
                 </>

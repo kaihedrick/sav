@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { HistoryActions } from "../components/HistoryActions";
 import { Layout } from "../components/Layout";
 import { apiJson, apiFetch } from "../lib/api";
 import { downloadEventArchive } from "../lib/requestsExcel";
@@ -46,7 +47,7 @@ export function AdminRequestsPage() {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [draftDate, setDraftDate] = useState("");
-  const [newEventDate, setNewEventDate] = useState(todayIso());
+  const [newEventDate, setNewEventDate] = useState("");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-requests"],
@@ -79,27 +80,6 @@ export function AdminRequestsPage() {
     return m;
   }, [inv.data?.items]);
 
-  const patchStatus = useMutation({
-    mutationFn: async ({
-      id,
-      status,
-    }: {
-      id: string;
-      status: "pending" | "received" | "not_brought";
-    }) => {
-      const res = await apiFetch(`/admin/requests/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-requests"] });
-      qc.invalidateQueries({ queryKey: ["inventory"] });
-    },
-  });
-
   const saveEventDate = useMutation({
     mutationFn: async (date: string) => {
       const res = await apiFetch("/admin/event", {
@@ -115,9 +95,7 @@ export function AdminRequestsPage() {
     },
   });
 
-  const requests = (data?.requests ?? []).filter(
-    (r) => r.status !== "rejected",
-  );
+  const requests = data?.requests ?? [];
 
   function lineName(l: RequestRow["lines"][number]) {
     return l.itemName ?? itemNameById.get(l.itemId) ?? "Unknown item";
@@ -182,7 +160,7 @@ export function AdminRequestsPage() {
     }
     if (
       !window.confirm(
-        `Save archive for the current event${eventDate ? ` (${eventDate})` : ""}, clear the inbox, then set the new event to ${newEventDate}?`,
+        `Save archive for the current event${eventDate ? ` (${eventDate})` : ""}, clear its history, then set the new event to ${newEventDate}?`,
       )
     ) {
       return;
@@ -212,20 +190,26 @@ export function AdminRequestsPage() {
     <Layout isAdmin>
       <div className="mb-4">
         <h1 className="text-xl font-bold tracking-tight text-bob-ink md:text-2xl">
-          Request inbox
+          Contribution history
         </h1>
         <p className="mt-1 text-sm text-bob-muted">
-          {requests.length} request{requests.length === 1 ? "" : "s"}
-          {eventDate ? ` · event ${eventDate}` : ""}
+          {requests.length} contribution{requests.length === 1 ? "" : "s"}
+          {eventDate ? ` · ${new Date(`${eventDate}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}` : ""}
         </p>
       </div>
 
-      <section className="surface-glass min-w-0 space-y-4 overflow-visible p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-bob-wood">
-          Event
-        </h2>
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
-          <label className="block min-w-0 flex-1 text-sm text-bob-ink">
+      <button type="button" className="surface-glass-btn mb-3 inline-flex min-h-11 items-center gap-2 px-3 text-sm font-medium" disabled={busy || isLoading}
+        onClick={() => void exportArchive().catch(e => window.alert((e as Error).message || "Export failed"))}>
+        <i className="fa-solid fa-file-arrow-down text-bob-wood" aria-hidden />Export history
+      </button>
+      <details className="surface-glass group min-w-0 max-w-full overflow-hidden">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-bob-wood [&::-webkit-details-marker]:hidden">
+          <span><i className="fa-solid fa-calendar-days mr-2" aria-hidden />Manage event</span>
+          <i className="fa-solid fa-chevron-down text-xs transition-transform group-open:rotate-180" aria-hidden />
+        </summary>
+        <div className="space-y-4 border-t border-bob-mist/70 p-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+          <label className="block min-w-0 text-sm text-bob-ink">
             Current event date
             <input
               type="date"
@@ -236,7 +220,7 @@ export function AdminRequestsPage() {
           </label>
           <button
             type="button"
-            className="surface-glass-btn w-full shrink-0 px-3 py-2.5 text-sm font-medium sm:w-auto"
+            className="surface-glass-btn min-h-11 px-3 text-sm font-medium disabled:opacity-50"
             disabled={
               saveEventDate.isPending ||
               !(draftDate || eventDate) ||
@@ -251,15 +235,13 @@ export function AdminRequestsPage() {
               });
             }}
           >
-            Save date
+            Save
           </button>
         </div>
 
         <div className="min-w-0 border-t border-bob-mist/70 pt-4">
           <p className="text-sm text-bob-muted">
-            Starting a new event saves request history, contributors, and
-            inventory to Excel (Downloads on desktop; Share / Files on iPhone),
-            then clears the inbox.
+            Starting a new event exports this event’s history and inventory, then clears its contributions.
           </p>
           <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
             <label className="block min-w-0 flex-1 text-sm text-bob-ink">
@@ -274,26 +256,15 @@ export function AdminRequestsPage() {
             <button
               type="button"
               className="w-full shrink-0 rounded-full bg-bob-wood px-4 py-2.5 text-sm font-medium text-white shadow-sm disabled:opacity-50 sm:w-auto"
-              disabled={busy}
+              disabled={busy || !newEventDate}
               onClick={() => void startNewEvent()}
             >
               {busy ? "Working…" : "Start new event"}
             </button>
           </div>
-          <button
-            type="button"
-            className="surface-glass-btn mt-3 w-full px-3 py-2 text-sm font-medium sm:w-auto"
-            disabled={busy}
-            onClick={() =>
-              void exportArchive().catch((e) =>
-                window.alert((e as Error).message || "Export failed"),
-              )
-            }
-          >
-            Export all purchase history
-          </button>
         </div>
-      </section>
+        </div>
+      </details>
 
       {isLoading && <p className="mt-4 text-sm text-bob-muted">Loading…</p>}
       {error && (
@@ -303,14 +274,14 @@ export function AdminRequestsPage() {
       )}
 
       <ul className="mt-6 space-y-4">
+        {!isLoading && !error && requests.length === 0 ? <li className="surface-glass p-4 text-sm text-bob-muted">No contributions yet. They’ll appear here when someone commits.</li> : null}
         {requests.map((r) => (
           <li key={r.id} className="surface-glass p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="font-semibold text-bob-ink">{r.userName}</p>
                 <p className="text-xs text-bob-muted">
-                  {new Date(r.createdAt).toLocaleString()} ·{" "}
-                  <span className="font-medium text-bob-magenta">{r.status}</span>
+                  {new Date(r.createdAt).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -321,30 +292,7 @@ export function AdminRequestsPage() {
                 </li>
               ))}
             </ul>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {r.status === "pending" && (
-                <>
-                  <button
-                    type="button"
-                    className="rounded-full bg-bob-gold px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-bob-gold-dark"
-                    onClick={() =>
-                      patchStatus.mutate({ id: r.id, status: "received" })
-                    }
-                  >
-                    Mark received
-                  </button>
-                  <button
-                    type="button"
-                    className="surface-glass-btn px-3 py-1.5 text-sm font-medium"
-                    onClick={() =>
-                      patchStatus.mutate({ id: r.id, status: "not_brought" })
-                    }
-                  >
-                    Not brought
-                  </button>
-                </>
-              )}
-            </div>
+            <HistoryActions request={r} />
           </li>
         ))}
       </ul>

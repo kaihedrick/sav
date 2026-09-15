@@ -151,6 +151,21 @@ body {
   /** Native date inputs need min-w-0 chain so mobile controls stay inside cards. */
   .input-date {
     @apply mt-1 box-border w-full min-w-0 max-w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-base text-bob-ink;
+    display: block;
+    appearance: none;
+    -webkit-appearance: none;
+    inline-size: 100%;
+    min-inline-size: 0;
+    min-height: 44px;
+    overflow: hidden;
+  }
+  .input-date::-webkit-date-and-time-value {
+    min-height: 1.5em;
+    text-align: left;
+  }
+  .input-date::-webkit-datetime-edit {
+    display: inline-flex;
+    padding: 0;
   }
 }
 

@@ -18,7 +18,7 @@ test("email includes quantities, photo, missing-image fallback and complete plai
   assert.match(email.text, /12 × Soap \(Hygiene\)/);
   assert.match(email.text, /8 × Socks/);
   assert.match(email.text, /2026-10-03/);
-  assert.match(email.html, /Pending arrival/);
+  assert.doesNotMatch(email.html, /Pending arrival|Received/);
   assert.match(email.text, /request-123/);
   assert.match(email.text, /Pack: 6-pack/);
   assert.match(email.html, /Pack: 6-pack/);

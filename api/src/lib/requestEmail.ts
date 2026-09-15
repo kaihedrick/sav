@@ -61,7 +61,6 @@ export function buildRequestEmail(input: RequestEmailInput): { subject: string; 
           <p style="margin:0 0 18px;font-size:15px;line-height:1.6;"><strong>${name}</strong> ${input.updated ? "updated what they plan to bring. The list below shows their current contribution." : "has shared what they plan to bring. Here’s everything in their contribution."}</p>
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8edf0;border-radius:12px;"><tr><td style="padding:16px;font-size:14px;line-height:1.6;">
             <strong>${total} total items</strong> &nbsp; &middot; &nbsp; ${input.items.length} item ${input.items.length === 1 ? "type" : "types"}<br>
-            Status: <strong>Pending arrival</strong>
             ${input.eventDate ? `<br>Event date: <strong>${escape(input.eventDate)}</strong>` : ""}
           </td></tr></table>
         </td></tr>
@@ -70,7 +69,7 @@ export function buildRequestEmail(input: RequestEmailInput): { subject: string; 
         </td></tr>
         <tr><td style="padding:24px;font-size:14px;line-height:1.6;word-break:break-word;">
           <strong>Contributor</strong><br>${name}${input.contributorEmail ? `<br>${escape(input.contributorEmail)}` : ""}
-          <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:22px;"><tr><td bgcolor="#78414e" style="border-radius:10px;"><a href="${link}" style="display:inline-block;padding:14px 22px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:bold;">Open request inbox &rarr;</a></td></tr></table>
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:22px;"><tr><td bgcolor="#78414e" style="border-radius:10px;"><a href="${link}" style="display:inline-block;padding:14px 22px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:bold;">Open contribution history &rarr;</a></td></tr></table>
           <p style="margin:16px 0 0;font-size:12px;color:#78655b;">Sign in with your admin account to review this contribution.${input.contributorEmail ? " You can reply to this email to contact the contributor." : ""}</p>
           <p style="margin:12px 0 0;font-size:11px;color:#78655b;">Request reference: ${escape(input.requestId)}</p>
         </td></tr>
@@ -79,10 +78,10 @@ export function buildRequestEmail(input: RequestEmailInput): { subject: string; 
     </td></tr></table>
   </body></html>`;
   const text = ["Bags of Blessings", input.updated ? "Contribution updated" : "New contribution", "", summary,
-    "Status: Pending arrival", ...(input.eventDate ? [`Event date: ${input.eventDate}`] : []), "", "What they’re bringing:",
+    ...(input.eventDate ? [`Event date: ${input.eventDate}`] : []), "", "What they’re bringing:",
     ...input.items.map(item => `- ${item.quantity} × ${item.name}${item.category ? ` (${item.category})` : ""}${item.packType ? ` — Pack: ${item.packType}` : ""}`), "",
     `Contributor: ${input.contributorName}`, ...(input.contributorEmail ? [input.contributorEmail] : []),
-    `Request reference: ${input.requestId}`, "", `Open request inbox: ${input.inboxUrl}`,
+    `Request reference: ${input.requestId}`, "", `Open contribution history: ${input.inboxUrl}`,
     "Manage request notifications in Admin access."].join("\n");
   return { subject, html, text };
 }

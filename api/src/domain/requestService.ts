@@ -4,15 +4,14 @@ import { randomUUID } from "node:crypto";
 const ORG = "ORG#default";
 
 export function canContributorEdit(r: ContributionRequest, userId: string): boolean {
-  return r.userId === userId && r.status === "pending";
+  return r.userId === userId;
 }
 
 export function canContributorDelete(r: ContributionRequest, userId: string): boolean {
-  if (r.userId !== userId) return false;
-  return r.status === "pending";
+  return r.userId === userId;
 }
 
-/** After event, only pending-like might be locked — allow admin to set received */
+/** History entries can be corrected later by their owner or an admin. */
 export function assertLinesPositive(lines: RequestLine[]): void {
   for (const l of lines) {
     if (!l.itemId || typeof l.qty !== "number" || l.qty < 1) {
@@ -45,7 +44,7 @@ export function newRequest(input: {
     userId: input.userId,
     userName: input.userName,
     userEmail: input.userEmail,
-    status: "pending",
+    status: "recorded",
     lines: input.lines,
     createdAt: now,
     updatedAt: now,
@@ -59,12 +58,6 @@ export function mergeRequestUpdate(
   asAdmin = false,
 ): ContributionRequest {
   if (!asAdmin && existing.userId !== userId) throw new Error("Forbidden");
-  if (!asAdmin && existing.status !== "pending") {
-    throw new Error("Only pending requests can be edited by contributor");
-  }
-  if (asAdmin && existing.status !== "pending") {
-    throw new Error("Admin can only edit lines while request is pending");
-  }
   assertLinesPositive(lines);
   return {
     ...existing,
