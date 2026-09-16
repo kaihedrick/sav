@@ -20,6 +20,7 @@ process.env.TABLE_NAME = "test";
 const request = { id: "request", userId: "u", userName: "Person", status: "pending", createdAt: "start", updatedAt: "start", lines: [{ itemId: "soap", qty: 10 }] };
 function database(target = 300, failCount = 0) {
   const rows = new Map([["ITEM#soap", { id: "soap", name: "Soap", category: "Hygiene", targetQty: target, sortPriority: 0, createdAt: "old", updatedAt: "old" }]]);
+  rows.set("STOCK#soap", { itemId: "soap", quantity: 59 });
   let calls = 0;
   globalThis.commitDb = async command => {
     if (command.kind === "get") return { Item: rows.get(command.input.Key.sk) };
@@ -31,41 +32,47 @@ function database(target = 300, failCount = 0) {
       if (op.Put) {
         const existing = rows.get(op.Put.Item.sk);
         if (op.Put.ConditionExpression.includes("attribute_not_exists") ? !!existing : existing?.updatedAt !== op.Put.ExpressionAttributeValues[":expected"]) conflict();
-      } else if (rows.get(op.Update.Key.sk)?.targetQty !== op.Update.ExpressionAttributeValues[":expected"]) conflict();
+      } else if (rows.get(op.Update.Key.sk)?.[op.Update.Key.sk.startsWith("STOCK#") ? "quantity" : "targetQty"] !== op.Update.ExpressionAttributeValues[":expected"]) conflict();
     }
     for (const op of ops) {
       if (op.Put) rows.set(op.Put.Item.sk, { ...op.Put.Item });
-      else rows.set(op.Update.Key.sk, { ...rows.get(op.Update.Key.sk), targetQty: op.Update.ExpressionAttributeValues[":next"], updatedAt: op.Update.ExpressionAttributeValues[":now"] });
+      else rows.set(op.Update.Key.sk, { ...rows.get(op.Update.Key.sk), [op.Update.Key.sk.startsWith("STOCK#") ? "quantity" : "targetQty"]: op.Update.ExpressionAttributeValues[":next"], updatedAt: op.Update.ExpressionAttributeValues[":now"] });
     }
     return {};
   };
   return rows;
 }
-test("commit reduces target; retry of the same request cannot subtract twice", async () => {
+test("commit adds to stock once and leaves target fixed", async () => {
   const db = database();
   assert.equal(await commitRequest(request), true);
-  assert.equal(db.get("ITEM#soap").targetQty, 290);
+  assert.equal(db.get("ITEM#soap").targetQty, 300);
+  assert.equal(db.get("STOCK#soap").quantity, 69);
   assert.equal(await commitRequest(request), false);
-  assert.equal(db.get("ITEM#soap").targetQty, 290);
+  assert.equal(db.get("ITEM#soap").targetQty, 300);
+  assert.equal(db.get("STOCK#soap").quantity, 69);
 });
-test("concurrent commits retry the latest remaining target without losing either quantity", async () => {
+test("concurrent commits preserve both stock additions", async () => {
   const db = database();
   await Promise.all([commitRequest(request), commitRequest({ ...request, id: "other" })]);
-  assert.equal(db.get("ITEM#soap").targetQty, 280);
+  assert.equal(db.get("ITEM#soap").targetQty, 300);
+  assert.equal(db.get("STOCK#soap").quantity, 79);
 });
-test("only added quantity reduces target; reductions require manual rollback", async () => {
+test("edits add only the increase; reductions require manual stock correction", async () => {
   const db = database();
   await commitRequest(request);
   const increased = { ...request, updatedAt: "later", lines: [{ itemId: "soap", qty: 15 }] };
   await commitRequest(increased, request);
-  assert.equal(db.get("ITEM#soap").targetQty, 285);
+  assert.equal(db.get("ITEM#soap").targetQty, 300);
+  assert.equal(db.get("STOCK#soap").quantity, 74);
   await commitRequest({ ...request, updatedAt: "latest", lines: [{ itemId: "soap", qty: 3 }] }, increased);
-  assert.equal(db.get("ITEM#soap").targetQty, 285);
+  assert.equal(db.get("ITEM#soap").targetQty, 300);
+  assert.equal(db.get("STOCK#soap").quantity, 74);
 });
-test("targets stop at zero; multiple lines for the same item are combined", async () => {
+test("stock may exceed target and duplicate lines are combined", async () => {
   const db = database(12);
   await commitRequest({ ...request, lines: [{ itemId: "soap", qty: 10 }, { itemId: "soap", qty: 10 }] });
-  assert.equal(db.get("ITEM#soap").targetQty, 0);
+  assert.equal(db.get("ITEM#soap").targetQty, 12);
+  assert.equal(db.get("STOCK#soap").quantity, 79);
 });
 test("failed transaction or missing item leaves targets and requests untouched", async () => {
   const db = database(300, 3);
@@ -74,4 +81,11 @@ test("failed transaction or missing item leaves targets and requests untouched",
   assert.equal(db.has("REQUEST#request"), false);
   database();
   await assert.rejects(commitRequest({ ...request, lines: [{ itemId: "missing", qty: 10 }] }), /no longer available/);
+});
+
+test("100 combo kits added to 59 gives 159 with target still 300", async () => {
+ const db = database();
+ await commitRequest({...request,lines:[{itemId:"soap",qty:100}]});
+ assert.equal(db.get("STOCK#soap").quantity,159);
+ assert.equal(db.get("ITEM#soap").targetQty,300);
 });

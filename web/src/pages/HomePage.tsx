@@ -114,7 +114,7 @@ export function HomePage() {
     },
     onSuccess: (data) => {
       commitAttempt.current = null;
-      setCommitWarning(data.googleSheetSync === "error" ? "Your commitment is saved and Target is updated on the website, but the shared sheet could not update. Please let an admin know." : null);
+      setCommitWarning(data.googleSheetSync === "error" ? "Your commitment is saved and On hand is updated on the website, but the shared sheet could not update. Please let an admin know." : null);
       qc.invalidateQueries({ queryKey: ["inventory"] });
       qc.invalidateQueries({ queryKey: ["my-requests"] });
       qc.invalidateQueries({ queryKey: ["community-requests"] });
@@ -154,7 +154,7 @@ export function HomePage() {
         What we need
       </h1>
       <section className="mt-6">
-        <p className="mb-3 text-sm text-bob-muted">Target shows how many more are needed. Committing items reduces that number.</p>
+        <p className="mb-3 text-sm text-bob-muted">Target is the total goal. Submitting items adds to On hand; Target stays the same.</p>
         {commitWarning ? <p role="status" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{commitWarning}</p> : null}
         {inv.isLoading && (
           <p className="text-bob-muted" aria-live="polite">

@@ -99,6 +99,7 @@ export async function getStock(itemId: string): Promise<number> {
     new GetCommand({
       TableName: tableName(),
       Key: { pk: PK, sk: `STOCK#${itemId}` },
+      ConsistentRead: true,
     }),
   );
   if (!out.Item) return 0;
@@ -188,7 +189,7 @@ export async function putRequest(r: ContributionRequest): Promise<void> {
   );
 }
 
-/** Save a contribution and reduce remaining targets together, without lost concurrent commits. */
+/** Save a contribution and increase stock together, keeping targets fixed, without lost concurrent commits. */
 export async function commitRequest(r: ContributionRequest, previous?: ContributionRequest): Promise<boolean> {
   const deltas = additionalCommitments(r.lines, previous?.lines);
   if (deltas.size > 99) throw new Error("Commit at most 99 different items at once.");
@@ -201,10 +202,13 @@ export async function commitRequest(r: ContributionRequest, previous?: Contribut
         throw new Error("This commitment was already used. Refresh before submitting again.");
       }
     }
-    const targets = await Promise.all([...deltas].map(async ([id, qty]) => {
+    const stocks = await Promise.all([...deltas].map(async ([id, qty]) => {
       const item = await getItem(id);
       if (!item) throw new Error("An item is no longer available. Refresh the page before committing.");
-      return { id, before: item.targetQty, after: Math.max(0, item.targetQty - qty) };
+      const before = await getStock(id);
+      const after = before + qty;
+      if (!Number.isSafeInteger(after) || after < 0) throw new Error("Stock quantity is too large.");
+      return { id, before, after };
     }));
     try {
       await client.send(new TransactWriteCommand({
@@ -213,11 +217,11 @@ export async function commitRequest(r: ContributionRequest, previous?: Contribut
           Item: { pk: PK, sk: `REQUEST#${r.id}`, gsi1pk: "REQUEST", gsi1sk: `${r.createdAt}#${r.id}`, ...requestAttrs(r) },
           ConditionExpression: previous ? "updatedAt = :expected" : "attribute_not_exists(pk)",
           ...(previous ? { ExpressionAttributeValues: { ":expected": previous.updatedAt } } : {}),
-        } }, ...targets.map(target => ({ Update: {
-          TableName: tableName(), Key: { pk: PK, sk: `ITEM#${target.id}` },
-          UpdateExpression: "SET targetQty = :next, updatedAt = :now",
-          ConditionExpression: "targetQty = :expected",
-          ExpressionAttributeValues: { ":expected": target.before, ":next": target.after, ":now": r.updatedAt },
+        } }, ...stocks.map(stock => ({ Update: {
+          TableName: tableName(), Key: { pk: PK, sk: `STOCK#${stock.id}` },
+          UpdateExpression: "SET quantity = :next, itemId = :id, gsi1pk = :kind, gsi1sk = :id",
+          ConditionExpression: stock.before === 0 ? "attribute_not_exists(quantity) OR quantity = :expected" : "quantity = :expected",
+          ExpressionAttributeValues: { ":expected": stock.before, ":next": stock.after, ":id": stock.id, ":kind": "STOCK" },
         } }))],
       }));
       return true;

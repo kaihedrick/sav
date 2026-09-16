@@ -438,7 +438,7 @@ export async function handleRequest(
             onHand,
             projected,
             priorityScore:
-              Math.max(0, it.targetQty),
+              Math.max(0, it.targetQty - onHand),
           };
         }),
       );

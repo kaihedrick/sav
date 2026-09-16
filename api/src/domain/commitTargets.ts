@@ -1,6 +1,6 @@
 import type { RequestLine } from "./types.js";
 
-/** Only additional commitments lower targets. Reductions/cancellations are rolled back manually. */
+/** Only additional commitments increase stock. Reductions/cancellations are corrected manually. */
 export function additionalCommitments(lines: RequestLine[], previous: RequestLine[] = []): Map<string, number> {
   const totals = (rows: RequestLine[]) => {
     const result = new Map<string, number>();

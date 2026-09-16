@@ -28,7 +28,7 @@ export function HistoryActions({ request }: { request: { id: string; lines: { it
           onChange={event => setQuantities(values => values.map((value, i) => i === index ? event.target.value : value))}
           className="min-h-11 w-24 rounded-lg border border-bob-mist bg-white px-2 text-base" />
       </label>)}</div>
-      <p className="mt-2 text-xs text-bob-muted">Adding quantity reduces Target. Reducing or deleting an entry needs a manual Target correction by an admin.</p>
+      <p className="mt-2 text-xs text-bob-muted">Adding quantity increases On hand. Reducing or deleting an entry needs a manual stock correction by an admin.</p>
       <div className="mt-2 flex gap-2">
         <button type="submit" disabled={!valid || save.isPending} className="min-h-11 rounded-full bg-bob-wood px-4 text-sm text-white disabled:opacity-50">{save.isPending ? "Saving…" : "Save"}</button>
         <button type="button" disabled={save.isPending} className="surface-glass-btn min-h-11 px-4 text-sm" onClick={() => { setEditing(false); save.reset(); }}>Cancel</button>
@@ -39,7 +39,7 @@ export function HistoryActions({ request }: { request: { id: string; lines: { it
     </div>}
     {save.error && !confirmDelete ? <p role="alert" className="mt-2 text-sm text-red-700">{save.error.message}</p> : null}
     <ConfirmDialog open={confirmDelete} title="Delete this entry?"
-      description="This removes the contribution from history. An admin will need to correct Target manually."
+      description="This removes the contribution from history. An admin will need to correct On hand manually."
       busy={save.isPending} error={save.error?.message}
       onCancel={() => { setConfirmDelete(false); save.reset(); }}
       onConfirm={() => { if (!save.isPending) save.mutate(true); }}>
