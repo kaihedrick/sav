@@ -176,7 +176,10 @@ export function HomePage() {
         ) : null}
       </div>
       <section className="mt-6">
-        <p className="mb-3 text-sm text-bob-muted">Target is the total goal. Submitting items adds to On hand; Target stays the same.</p>
+        <p className="mb-3 flex items-center gap-2 text-sm text-bob-muted">
+          <i className="fa-solid fa-arrow-down motion-safe:animate-bounce" aria-hidden="true" />
+          Add items below
+        </p>
         {commitWarning ? <p role="status" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{commitWarning}</p> : null}
         {inv.isLoading && (
           <p className="text-bob-muted" aria-live="polite">
