@@ -369,7 +369,6 @@ export function HomePage() {
           <i className="fa-solid fa-user" aria-hidden />
           My history
         </h2>
-        <p className="mt-2 text-sm text-bob-muted">Your contributions appear here as soon as you commit. You can edit them later.</p>
         <ul className="mt-3 space-y-3">
           {mineRequests.length === 0 && (
             <li className="surface-glass flex items-center gap-2 px-4 py-3 text-sm text-bob-muted">
