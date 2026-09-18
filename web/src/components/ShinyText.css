@@ -1,0 +1,10 @@
+.shiny-text {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: reduce), (forced-colors: active) {
+  .shiny-text {
+    background-image: none !important;
+    -webkit-text-fill-color: currentColor !important;
+  }
+}

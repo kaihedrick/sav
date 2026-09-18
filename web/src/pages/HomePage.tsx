@@ -16,8 +16,13 @@ import { IconButton } from "../components/IconButton";
 import { InventoryBrowser } from "../components/InventoryBrowser";
 import { ItemThumb } from "../components/ItemThumb";
 import { PackLabel } from "../components/PackLabel";
+import ShinyText from "../components/ShinyText";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL ?? "";
+// Use the recipient's shared Venmo profile link; a phone number is not a profile URL.
+const VENMO_PROFILE_URL =
+  import.meta.env.VITE_VENMO_PROFILE_URL?.trim() ||
+  "https://account.venmo.com/u/Savannah-Leone-1";
 
 type InvItem = {
   id: string;
@@ -150,9 +155,26 @@ export function HomePage() {
 
   return (
     <Layout isAdmin={admin}>
-      <h1 className="text-2xl font-bold tracking-tight text-bob-ink md:text-3xl">
-        What we need
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-bob-ink md:text-3xl">
+          What we need
+        </h1>
+        {VENMO_PROFILE_URL ? (
+          <a
+            href={VENMO_PROFILE_URL}
+            className="surface-glass-btn inline-flex min-h-11 shrink-0 items-center justify-center gap-2 px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bob-ink"
+          >
+            <i className="fa-solid fa-dollar-sign" aria-hidden="true" />
+            <ShinyText
+              text="Donate money"
+              color="#604438"
+              shineColor="#99702e"
+              speed={2}
+              delay={1}
+            />
+          </a>
+        ) : null}
+      </div>
       <section className="mt-6">
         <p className="mb-3 text-sm text-bob-muted">Target is the total goal. Submitting items adds to On hand; Target stays the same.</p>
         {commitWarning ? <p role="status" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{commitWarning}</p> : null}
