@@ -17,6 +17,7 @@ import type {
 import { ORG } from "../domain/requestService.js";
 import type { SheetChange } from "../domain/liveSheetImport.js";
 import { additionalCommitments } from "../domain/commitTargets.js";
+import { randomUUID } from "node:crypto";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -191,8 +192,13 @@ export async function putRequest(r: ContributionRequest): Promise<void> {
 
 /** Save a contribution and increase stock together, keeping targets fixed, without lost concurrent commits. */
 export async function commitRequest(r: ContributionRequest, previous?: ContributionRequest): Promise<boolean> {
+  return writeContribution(r, previous);
+}
+
+async function writeContribution(r: ContributionRequest, previous?: ContributionRequest, deletedBy?: string): Promise<boolean> {
   const deltas = additionalCommitments(r.lines, previous?.lines);
-  if (deltas.size > 99) throw new Error("Commit at most 99 different items at once.");
+  const deleting = deletedBy !== undefined;
+  if (deltas.size > (deleting ? 98 : 99)) throw new Error("Too many different items to change at once.");
   for (let attempt = 0; attempt < 3; attempt++) {
     if (!previous) {
       const saved = await getRequest(r.id);
@@ -202,22 +208,35 @@ export async function commitRequest(r: ContributionRequest, previous?: Contribut
         throw new Error("This commitment was already used. Refresh before submitting again.");
       }
     }
-    const stocks = await Promise.all([...deltas].map(async ([id, qty]) => {
+    const stockChanges = await Promise.all([...deltas].map(async ([id, qty]) => {
       const item = await getItem(id);
+      // Catalog removal also removes its stock. Do not resurrect deleted items.
+      if (!item && qty < 0) return null;
       if (!item) throw new Error("An item is no longer available. Refresh the page before committing.");
       const before = await getStock(id);
-      const after = before + qty;
+      const after = Math.max(0, before + qty);
       if (!Number.isSafeInteger(after) || after < 0) throw new Error("Stock quantity is too large.");
       return { id, before, after };
     }));
+    const stocks = stockChanges.filter((stock): stock is NonNullable<typeof stock> => stock !== null);
     try {
       await client.send(new TransactWriteCommand({
-        TransactItems: [{ Put: {
+        TransactItems: [...(deleting ? [{ Delete: {
+          TableName: tableName(), Key: { pk: PK, sk: `REQUEST#${r.id}` },
+          ConditionExpression: "updatedAt = :expected",
+          ExpressionAttributeValues: { ":expected": previous!.updatedAt },
+        } }, { Put: {
+          TableName: tableName(),
+          Item: { pk: PK, sk: `AUDIT#${randomUUID()}`, action: "delete_contribution", requestId: r.id,
+            actorId: deletedBy, createdAt: new Date().toISOString(), lines: previous!.lines,
+            stockChanges: stocks, requestCreatedAt: previous!.createdAt },
+          ConditionExpression: "attribute_not_exists(pk)",
+        } }] : [{ Put: {
           TableName: tableName(),
           Item: { pk: PK, sk: `REQUEST#${r.id}`, gsi1pk: "REQUEST", gsi1sk: `${r.createdAt}#${r.id}`, ...requestAttrs(r) },
           ConditionExpression: previous ? "updatedAt = :expected" : "attribute_not_exists(pk)",
           ...(previous ? { ExpressionAttributeValues: { ":expected": previous.updatedAt } } : {}),
-        } }, ...stocks.map(stock => ({ Update: {
+        } }]), ...stocks.map(stock => ({ Update: {
           TableName: tableName(), Key: { pk: PK, sk: `STOCK#${stock.id}` },
           UpdateExpression: "SET quantity = :next, itemId = :id, gsi1pk = :kind, gsi1sk = :id",
           ConditionExpression: stock.before === 0 ? "attribute_not_exists(quantity) OR quantity = :expected" : "quantity = :expected",
@@ -232,7 +251,13 @@ export async function commitRequest(r: ContributionRequest, previous?: Contribut
   throw new Error("Inventory changed during commit. Please retry.");
 }
 
-export async function deleteRequest(id: string): Promise<void> {
+export async function deleteRequest(id: string, previous: ContributionRequest, actorId: string): Promise<void> {
+  if (id !== previous.id) throw new Error("Request ID mismatch.");
+  await writeContribution({ ...previous, lines: [] }, previous, actorId);
+}
+
+/** Event/history clearing intentionally preserves inventory. */
+async function clearRequestHistory(id: string): Promise<void> {
   await client.send(
     new DeleteCommand({
       TableName: tableName(),
@@ -245,7 +270,7 @@ export async function deleteRequest(id: string): Promise<void> {
 export async function deleteAllRequests(): Promise<number> {
   const all = await listAllRequests();
   for (const r of all) {
-    await deleteRequest(r.id);
+    await clearRequestHistory(r.id);
   }
   return all.length;
 }

@@ -1,6 +1,6 @@
 import type { RequestLine } from "./types.js";
 
-/** Only additional commitments increase stock. Reductions/cancellations are corrected manually. */
+/** Signed stock changes, including removed lines; targets remain fixed. */
 export function additionalCommitments(lines: RequestLine[], previous: RequestLine[] = []): Map<string, number> {
   const totals = (rows: RequestLine[]) => {
     const result = new Map<string, number>();
@@ -8,5 +8,8 @@ export function additionalCommitments(lines: RequestLine[], previous: RequestLin
     return result;
   };
   const before = totals(previous);
-  return new Map([...totals(lines)].map(([id, qty]) => [id, Math.max(0, qty - (before.get(id) ?? 0))]).filter(([, qty]) => Number(qty) > 0) as [string, number][]);
+  const after = totals(lines);
+  return new Map([...new Set([...before.keys(), ...after.keys()])]
+    .map(id => [id, (after.get(id) ?? 0) - (before.get(id) ?? 0)] as [string, number])
+    .filter(([, qty]) => qty !== 0));
 }

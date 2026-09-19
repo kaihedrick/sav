@@ -733,7 +733,7 @@ export async function handleRequest(
       if (!canContributorDelete(existing, user.sub) && !admin) {
         return json(403, { error: "Forbidden" }, origin);
       }
-      await repo.deleteRequest(id);
+      await repo.deleteRequest(id, existing, user.sub);
       const sheetSyncDel = await runGoogleSheetSync();
       return json(200, { ok: true, ...sheetSyncDel }, origin);
     }
